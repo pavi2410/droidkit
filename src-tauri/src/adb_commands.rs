@@ -1,10 +1,10 @@
 use adb_client::{ADBDeviceExt, ADBUSBDevice};
 use serde::Serialize;
-use std::io::stdout;
-use std::str::from_utf8;
 use std::env;
+use std::io::stdout;
 use std::path::PathBuf;
 use std::process::Command;
+use std::str::from_utf8;
 
 #[derive(Serialize)]
 pub(crate) enum DeviceTransport {
@@ -30,7 +30,7 @@ pub(crate) fn get_connected_device() -> Option<ADBUSBDevice> {
         Err(what) => {
             println!("Error: {:?}", what);
             None
-        },
+        }
     }
 }
 
@@ -68,10 +68,8 @@ pub(crate) fn list_avds() -> Vec<String> {
     };
 
     let emulator_path = android_home.join("emulator").join("emulator");
-    
-    let output = Command::new(&emulator_path)
-        .args(&["-list-avds"])
-        .output();
+
+    let output = Command::new(&emulator_path).args(&["-list-avds"]).output();
 
     match output {
         Ok(output) => {
@@ -93,7 +91,7 @@ pub(crate) fn launch_avd(avd_name: &str) -> Result<(), String> {
     };
 
     let emulator_path = android_home.join("emulator").join("emulator");
-    
+
     let result = Command::new(&emulator_path)
         .args(&["-avd", avd_name])
         .spawn();
@@ -115,26 +113,31 @@ pub(crate) struct FileInfo {
 
 pub(crate) fn list_files(device: &mut ADBUSBDevice, path: &str) -> Result<Vec<FileInfo>, String> {
     let mut buf: Vec<u8> = Vec::new();
-    
+
     let result = device.shell_command(&["ls", "-la", path], &mut buf);
-    
+
     match result {
         Ok(_) => {
             let output = String::from_utf8_lossy(&buf);
             let mut files = Vec::new();
-            
-            for line in output.lines().skip(1) { // Skip the "total" line
+
+            for line in output.lines().skip(1) {
+                // Skip the "total" line
                 if line.trim().is_empty() {
                     continue;
                 }
-                
+
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 9 {
                     let permissions = parts[0].to_string();
                     let is_directory = permissions.starts_with('d');
-                    let size = if is_directory { None } else { parts[4].parse().ok() };
+                    let size = if is_directory {
+                        None
+                    } else {
+                        parts[4].parse().ok()
+                    };
                     let name = parts[8..].join(" ");
-                    
+
                     if name != "." && name != ".." {
                         files.push(FileInfo {
                             name: name.clone(),
@@ -150,24 +153,27 @@ pub(crate) fn list_files(device: &mut ADBUSBDevice, path: &str) -> Result<Vec<Fi
                     }
                 }
             }
-            
+
             Ok(files)
         }
         Err(e) => Err(format!("Failed to list files: {:?}", e)),
     }
 }
 
-pub(crate) fn pull_file(device: &mut ADBUSBDevice, remote_path: &str, local_path: &str) -> Result<(), String> {
+pub(crate) fn pull_file(
+    device: &mut ADBUSBDevice,
+    remote_path: &str,
+    local_path: &str,
+) -> Result<(), String> {
     // Note: This is a simplified implementation
     // In a real app, you'd want to use proper file transfer methods
     let mut buf: Vec<u8> = Vec::new();
-    
+
     let result = device.shell_command(&["cat", remote_path], &mut buf);
-    
+
     match result {
         Ok(_) => {
-            std::fs::write(local_path, buf)
-                .map_err(|e| format!("Failed to write file: {}", e))?;
+            std::fs::write(local_path, buf).map_err(|e| format!("Failed to write file: {}", e))?;
             Ok(())
         }
         Err(e) => Err(format!("Failed to pull file: {:?}", e)),
@@ -176,9 +182,9 @@ pub(crate) fn pull_file(device: &mut ADBUSBDevice, remote_path: &str, local_path
 
 pub(crate) fn get_installed_packages(device: &mut ADBUSBDevice) -> Result<Vec<String>, String> {
     let mut buf: Vec<u8> = Vec::new();
-    
+
     let result = device.shell_command(&["pm", "list", "packages"], &mut buf);
-    
+
     match result {
         Ok(_) => {
             let output = String::from_utf8_lossy(&buf);
@@ -200,9 +206,9 @@ pub(crate) fn get_installed_packages(device: &mut ADBUSBDevice) -> Result<Vec<St
 
 pub(crate) fn get_logcat_output(device: &mut ADBUSBDevice, lines: u32) -> Result<String, String> {
     let mut buf: Vec<u8> = Vec::new();
-    
+
     let result = device.shell_command(&["logcat", "-d", "-t", &lines.to_string()], &mut buf);
-    
+
     match result {
         Ok(_) => {
             let output = String::from_utf8_lossy(&buf);

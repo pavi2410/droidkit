@@ -1,15 +1,6 @@
 use crate::adb_commands::{
-    get_connected_device, 
-    get_device_info, 
-    get_android_home,
-    list_avds,
-    launch_avd,
-    list_files,
-    pull_file,
-    get_installed_packages,
-    get_logcat_output,
-    DeviceInfo,
-    FileInfo
+    DeviceInfo, FileInfo, get_android_home, get_connected_device, get_device_info,
+    get_installed_packages, get_logcat_output, launch_avd, list_avds, list_files, pull_file,
 };
 
 mod adb_commands;
@@ -67,6 +58,7 @@ fn get_logcat(lines: u32) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             device_info,

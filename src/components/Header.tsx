@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/SettingsDialog"
-import { Settings, Smartphone } from "lucide-react"
+import { Settings } from "lucide-react"
 
 interface HeaderProps {
   connectedDevice?: {

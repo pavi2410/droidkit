@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core"
 import { Header } from "@/components/Header"
 import { Sidebar } from "@/components/Sidebar"
 import { MainContent } from "@/components/MainContent"
+import { ThemeProvider } from "@/components/ThemeProvider"
+import { useAppSettings } from "@/hooks/useAppSettings"
 
 interface DeviceInfo {
   transport: "USB" | "TCP"
@@ -16,6 +18,7 @@ function App() {
   const [devices, setDevices] = useState<DeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<DeviceInfo>()
   const [isLoading, setIsLoading] = useState(false)
+  const { getCategory } = useAppSettings()
 
   const refreshDevices = async () => {
     setIsLoading(true)
@@ -34,27 +37,39 @@ function App() {
     }
   }
 
+
   useEffect(() => {
     refreshDevices()
-    // Set up periodic refresh every 5 seconds
-    const interval = setInterval(refreshDevices, 5000)
-    return () => clearInterval(interval)
-  }, [])
+    // Get polling interval from settings
+    const deviceSettings = getCategory('devices')
+    const pollingInterval = deviceSettings.pollingInterval * 1000 // Convert to milliseconds
+    
+    let interval: NodeJS.Timeout | null = null
+    if (deviceSettings.autoRefresh) {
+      interval = setInterval(refreshDevices, pollingInterval)
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [getCategory])
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <Header connectedDevice={selectedDevice} />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          devices={devices}
-          selectedDevice={selectedDevice}
-          onDeviceSelect={setSelectedDevice}
-          onRefreshDevices={refreshDevices}
-          isLoading={isLoading}
-        />
-        <MainContent selectedDevice={selectedDevice} />
+    <ThemeProvider>
+      <div className="flex h-screen flex-col bg-background">
+        <Header connectedDevice={selectedDevice} />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            devices={devices}
+            selectedDevice={selectedDevice}
+            onDeviceSelect={setSelectedDevice}
+            onRefreshDevices={refreshDevices}
+            isLoading={isLoading}
+          />
+          <MainContent selectedDevice={selectedDevice} />
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }
 

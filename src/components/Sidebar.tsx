@@ -9,8 +9,7 @@ import {
   Play, 
   RefreshCw, 
   Wifi, 
-  WifiOff,
-  Monitor
+  WifiOff
 } from "lucide-react"
 
 interface DeviceInfo {
