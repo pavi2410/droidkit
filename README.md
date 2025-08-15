@@ -1,8 +1,10 @@
-# DroidKit 📱
+# DroidKit 🧑‍💻🩺📱
 
-**DroidKit** is a comprehensive macOS desktop application for Android developers that provides essential ADB (Android Debug Bridge) tools through an intuitive graphical interface.
-
-![DroidKit](public/droidkit-icon.png)
+<div align="center">
+  <img src="public/droidkit-icon-128.png" alt="DroidKit" width="128" height="128" />
+  <h3>Android Toolkit for macOS</h3>
+  <p><strong>DroidKit</strong> is a comprehensive macOS desktop application for Android developers that provides essential ADB (Android Debug Bridge) tools through an intuitive graphical interface.</p>
+</div>
 
 ## ✨ Features
 

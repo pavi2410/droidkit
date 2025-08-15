@@ -12,10 +12,14 @@ interface HeaderProps {
 
 export function Header({ connectedDevice }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="flex items-center justify-between px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <Smartphone className="h-6 w-6 text-primary" />
+          <img 
+            src="/droidkit-icon-128.png" 
+            alt="DroidKit" 
+            className="size-12"
+          />
           <h1 className="text-xl font-semibold">DroidKit</h1>
         </div>
         {connectedDevice && (
