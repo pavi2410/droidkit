@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileExplorer } from "@/components/FileExplorer"
 import { AppManager } from "@/components/AppManager"
 import { LogcatViewer } from "@/components/LogcatViewer"
+import { DeviceInfo } from "@/types/device"
 import { 
   FileText, 
   Monitor, 
@@ -12,14 +13,6 @@ import {
   Camera,
   Activity
 } from "lucide-react"
-
-interface DeviceInfo {
-  transport: "USB" | "TCP"
-  serial_no: string
-  model: string
-  android_version: string
-  sdk_version: string
-}
 
 interface MainContentProps {
   selectedDevice?: DeviceInfo
@@ -122,15 +115,15 @@ export function MainContent({ selectedDevice }: MainContentProps) {
           </TabsContent>
 
           <TabsContent value="files" className="h-full">
-            <FileExplorer />
+            <FileExplorer selectedDevice={selectedDevice} />
           </TabsContent>
 
           <TabsContent value="logcat" className="h-full">
-            <LogcatViewer />
+            <LogcatViewer selectedDevice={selectedDevice} />
           </TabsContent>
 
           <TabsContent value="apps" className="h-full">
-            <AppManager />
+            <AppManager selectedDevice={selectedDevice} />
           </TabsContent>
 
           <TabsContent value="screen" className="h-full">

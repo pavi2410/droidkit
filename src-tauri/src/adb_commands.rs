@@ -1,7 +1,7 @@
-use adb_client::{ADBDeviceExt, ADBUSBDevice};
+use adb_client::{ADBDeviceExt, ADBUSBDevice, ADBTcpDevice, RustADBError};
 use serde::Serialize;
 use std::env;
-use std::io::stdout;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::from_utf8;
@@ -14,21 +14,70 @@ pub(crate) enum DeviceTransport {
 
 #[derive(Serialize)]
 pub(crate) struct DeviceInfo {
-    transport: DeviceTransport,
-    serial_no: String,
-    model: String,
-    android_version: String,
-    sdk_version: String,
+    pub transport: DeviceTransport,
+    pub serial_no: String,
+    pub model: String,
+    pub android_version: String,
+    pub sdk_version: String,
 }
 
-const COMPANION_PKG_NAME: &str = "io.makeroid.companion";
 
-pub(crate) fn get_connected_device() -> Option<ADBUSBDevice> {
+pub(crate) enum Device {
+    USB(ADBUSBDevice),
+    TCP(ADBTcpDevice),
+}
+
+impl Device {
+    pub fn shell_command(&mut self, cmd: &[&str], output: &mut dyn std::io::Write) -> Result<(), RustADBError> {
+        match self {
+            Device::USB(device) => device.shell_command(cmd, output),
+            Device::TCP(device) => device.shell_command(cmd, output),
+        }
+    }
+}
+
+pub(crate) fn get_connected_device() -> Option<Device> {
     let autodetect = ADBUSBDevice::autodetect();
     match autodetect {
-        Ok(device) => Some(device),
+        Ok(device) => Some(Device::USB(device)),
         Err(what) => {
             println!("Error: {:?}", what);
+            None
+        }
+    }
+}
+
+
+pub(crate) fn reconnect_device(serial_no: &str) -> Option<Device> {
+    // For TCP devices, we need to parse the serial to get IP and port
+    if serial_no.contains(':') {
+        let parts: Vec<&str> = serial_no.split(':').collect();
+        if parts.len() == 2 {
+            if let Ok(ip) = parts[0].parse::<IpAddr>() {
+                if let Ok(port) = parts[1].parse::<u16>() {
+                    let socket_addr = SocketAddr::new(ip, port);
+                    if let Ok(device) = ADBTcpDevice::new(socket_addr) {
+                        return Some(Device::TCP(device));
+                    }
+                }
+            }
+        }
+    }
+    
+    // For USB devices, try autodetect
+    if let Ok(device) = ADBUSBDevice::autodetect() {
+        return Some(Device::USB(device));
+    }
+    
+    None
+}
+
+pub(crate) fn connect_tcp_device(ip: IpAddr, port: u16) -> Option<Device> {
+    let socket_addr = SocketAddr::new(ip, port);
+    match ADBTcpDevice::new(socket_addr) {
+        Ok(device) => Some(Device::TCP(device)),
+        Err(what) => {
+            println!("Error connecting to TCP device: {:?}", what);
             None
         }
     }
@@ -111,7 +160,7 @@ pub(crate) struct FileInfo {
     permissions: String,
 }
 
-pub(crate) fn list_files(device: &mut ADBUSBDevice, path: &str) -> Result<Vec<FileInfo>, String> {
+pub(crate) fn list_files(device: &mut Device, path: &str) -> Result<Vec<FileInfo>, String> {
     let mut buf: Vec<u8> = Vec::new();
 
     let result = device.shell_command(&["ls", "-la", path], &mut buf);
@@ -161,7 +210,7 @@ pub(crate) fn list_files(device: &mut ADBUSBDevice, path: &str) -> Result<Vec<Fi
 }
 
 pub(crate) fn pull_file(
-    device: &mut ADBUSBDevice,
+    device: &mut Device,
     remote_path: &str,
     local_path: &str,
 ) -> Result<(), String> {
@@ -180,7 +229,7 @@ pub(crate) fn pull_file(
     }
 }
 
-pub(crate) fn get_installed_packages(device: &mut ADBUSBDevice) -> Result<Vec<String>, String> {
+pub(crate) fn get_installed_packages(device: &mut Device) -> Result<Vec<String>, String> {
     let mut buf: Vec<u8> = Vec::new();
 
     let result = device.shell_command(&["pm", "list", "packages"], &mut buf);
@@ -204,7 +253,7 @@ pub(crate) fn get_installed_packages(device: &mut ADBUSBDevice) -> Result<Vec<St
     }
 }
 
-pub(crate) fn get_logcat_output(device: &mut ADBUSBDevice, lines: u32) -> Result<String, String> {
+pub(crate) fn get_logcat_output(device: &mut Device, lines: u32) -> Result<String, String> {
     let mut buf: Vec<u8> = Vec::new();
 
     let result = device.shell_command(&["logcat", "-d", "-t", &lines.to_string()], &mut buf);
@@ -218,7 +267,7 @@ pub(crate) fn get_logcat_output(device: &mut ADBUSBDevice, lines: u32) -> Result
     }
 }
 
-fn getprop_from_device(device: &mut ADBUSBDevice, property: &str) -> Option<String> {
+fn getprop_from_device(device: &mut Device, property: &str) -> Option<String> {
     let mut buf: Vec<u8> = Vec::new();
 
     match device.shell_command(&["getprop", property], &mut buf) {
@@ -230,29 +279,33 @@ fn getprop_from_device(device: &mut ADBUSBDevice, property: &str) -> Option<Stri
     }
 }
 
-pub(crate) fn get_device_serial(device: &mut ADBUSBDevice) -> Option<String> {
+pub(crate) fn get_device_serial(device: &mut Device) -> Option<String> {
     getprop_from_device(device, "ro.serialno")
 }
 
-pub(crate) fn get_device_model(device: &mut ADBUSBDevice) -> Option<String> {
+pub(crate) fn get_device_model(device: &mut Device) -> Option<String> {
     getprop_from_device(device, "ro.product.model")
 }
 
-pub(crate) fn get_device_android_version(device: &mut ADBUSBDevice) -> Option<String> {
+pub(crate) fn get_device_android_version(device: &mut Device) -> Option<String> {
     getprop_from_device(device, "ro.build.version.release")
 }
 
-pub(crate) fn get_device_sdk_version(device: &mut ADBUSBDevice) -> Option<String> {
+pub(crate) fn get_device_sdk_version(device: &mut Device) -> Option<String> {
     getprop_from_device(device, "ro.build.version.sdk")
 }
 
-pub(crate) fn get_device_info(device: &mut ADBUSBDevice) -> Result<DeviceInfo, ()> {
+pub(crate) fn get_device_info(device: &mut Device) -> Result<DeviceInfo, ()> {
     if let Some(serial_no) = get_device_serial(device) {
         if let Some(model) = get_device_model(device) {
             if let Some(android_version) = get_device_android_version(device) {
                 if let Some(sdk_version) = get_device_sdk_version(device) {
+                    let transport = match device {
+                        Device::USB(_) => DeviceTransport::USB,
+                        Device::TCP(_) => DeviceTransport::TCP,
+                    };
                     return Ok(DeviceInfo {
-                        transport: DeviceTransport::USB,
+                        transport,
                         serial_no,
                         model,
                         android_version,
@@ -263,32 +316,6 @@ pub(crate) fn get_device_info(device: &mut ADBUSBDevice) -> Result<DeviceInfo, (
         }
     }
     Err(())
-}
-
-pub(crate) fn start_companion(device_serial: &str) -> Result<(), ()> {
-    if let Some(mut device) = get_connected_device() {
-        if let Some(serial_no) = get_device_serial(&mut device) {
-            if serial_no != device_serial {
-                return Err(());
-            }
-
-            let _ = device.shell_command(
-                &[
-                    "am",
-                    "start",
-                    "-a",
-                    "android.intent.action.MAIN",
-                    "-n",
-                    &format!("{}/.Screen1", COMPANION_PKG_NAME),
-                    "--ez",
-                    "rundirect",
-                    "true",
-                ],
-                &mut stdout(),
-            );
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -303,15 +330,6 @@ mod tests {
                 println!("Model: {:?}", device_info.model);
                 println!("Android Version: {:?}", device_info.android_version);
                 println!("SDK Version: {:?}", device_info.sdk_version);
-            }
-        }
-    }
-
-    #[test]
-    fn test_start_companion() {
-        if let Some(mut device) = get_connected_device() {
-            if let Some(serial_no) = get_device_serial(&mut device) {
-                start_companion(&serial_no).unwrap();
             }
         }
     }

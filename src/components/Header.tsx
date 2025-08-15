@@ -1,13 +1,11 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/SettingsDialog"
-import { Settings } from "lucide-react"
+import { Settings, Wifi, Usb } from "lucide-react"
+import { DeviceInfo } from "@/types/device"
 
 interface HeaderProps {
-  connectedDevice?: {
-    model: string
-    serial_no: string
-  }
+  connectedDevice?: DeviceInfo
 }
 
 export function Header({ connectedDevice }: HeaderProps) {
@@ -23,9 +21,17 @@ export function Header({ connectedDevice }: HeaderProps) {
           <h1 className="text-xl font-semibold">DroidKit</h1>
         </div>
         {connectedDevice && (
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-2">
             <div className="h-2 w-2 rounded-full bg-green-500" />
-            {connectedDevice.model}
+            {connectedDevice.transport === "TCP" ? (
+              <Wifi className="h-3 w-3 text-blue-500" />
+            ) : (
+              <Usb className="h-3 w-3 text-green-500" />
+            )}
+            <span>{connectedDevice.model}</span>
+            <span className="text-xs opacity-70">
+              ({connectedDevice.transport === "TCP" ? "Wireless" : "USB"})
+            </span>
           </Badge>
         )}
       </div>

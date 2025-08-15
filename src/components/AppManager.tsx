@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { DeviceInfo } from "@/types/device"
 import { 
   Package, 
   Search,
@@ -12,16 +13,28 @@ import {
   Info
 } from "lucide-react"
 
-export function AppManager() {
+interface AppManagerProps {
+  selectedDevice?: DeviceInfo
+}
+
+export function AppManager({ selectedDevice }: AppManagerProps) {
   const [apps, setApps] = useState<string[]>([])
   const [filteredApps, setFilteredApps] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
   const loadApps = async () => {
+    if (!selectedDevice) {
+      setApps([])
+      setFilteredApps([])
+      return
+    }
+
     setIsLoading(true)
     try {
-      const appList = await invoke<string[]>("get_apps")
+      const appList = await invoke<string[]>("get_apps_for_device", { 
+        deviceSerial: selectedDevice.serial_no 
+      })
       setApps(appList)
       setFilteredApps(appList)
     } catch (error) {
@@ -55,7 +68,7 @@ export function AppManager() {
 
   useEffect(() => {
     loadApps()
-  }, [])
+  }, [selectedDevice])
 
   useEffect(() => {
     filterApps(searchTerm)

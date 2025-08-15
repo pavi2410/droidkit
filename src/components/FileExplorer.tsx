@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { DeviceInfo, FileInfo } from "@/types/device"
 import { 
   Folder, 
   File, 
@@ -12,24 +13,28 @@ import {
   RefreshCw
 } from "lucide-react"
 
-interface FileInfo {
-  name: string
-  path: string
-  is_directory: boolean
-  size?: number
-  permissions: string
+interface FileExplorerProps {
+  selectedDevice?: DeviceInfo
 }
 
-export function FileExplorer() {
+export function FileExplorer({ selectedDevice }: FileExplorerProps) {
   const [currentPath, setCurrentPath] = useState("/sdcard")
   const [files, setFiles] = useState<FileInfo[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [pathHistory, setPathHistory] = useState<string[]>(["/sdcard"])
 
   const loadFiles = async (path: string) => {
+    if (!selectedDevice) {
+      setFiles([])
+      return
+    }
+
     setIsLoading(true)
     try {
-      const fileList = await invoke<FileInfo[]>("browse_files", { path })
+      const fileList = await invoke<FileInfo[]>("browse_files_for_device", { 
+        deviceSerial: selectedDevice.serial_no,
+        path 
+      })
       setFiles(fileList)
     } catch (error) {
       console.error("Failed to load files:", error)
@@ -84,8 +89,10 @@ export function FileExplorer() {
   }
 
   useEffect(() => {
-    loadFiles(currentPath)
-  }, [])
+    if (selectedDevice) {
+      loadFiles(currentPath)
+    }
+  }, [selectedDevice, currentPath])
 
   return (
     <Card className="h-full">

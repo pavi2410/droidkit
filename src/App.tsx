@@ -5,14 +5,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { MainContent } from "@/components/MainContent"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { useAppSettings } from "@/hooks/useAppSettings"
-
-interface DeviceInfo {
-  transport: "USB" | "TCP"
-  serial_no: string
-  model: string
-  android_version: string
-  sdk_version: string
-}
+import { DeviceInfo } from "@/types/device"
 
 function App() {
   const [devices, setDevices] = useState<DeviceInfo[]>([])
@@ -24,16 +17,56 @@ function App() {
     setIsLoading(true)
     try {
       const deviceInfo = await invoke<DeviceInfo>("device_info")
-      setDevices([deviceInfo])
+      
+      // Check if this device is already in our list
+      setDevices(prevDevices => {
+        const existingDevice = prevDevices.find(d => d.serial_no === deviceInfo.serial_no)
+        if (existingDevice) {
+          // Update existing device info
+          return prevDevices.map(d => 
+            d.serial_no === deviceInfo.serial_no ? deviceInfo : d
+          )
+        } else {
+          // Add new device
+          return [...prevDevices, deviceInfo]
+        }
+      })
+      
       if (!selectedDevice) {
         setSelectedDevice(deviceInfo)
       }
     } catch (error) {
-      console.log("No device connected:", error)
-      setDevices([])
-      setSelectedDevice(undefined)
+      console.log("No USB device connected:", error)
+      // Remove USB devices that are no longer connected
+      setDevices(prevDevices => prevDevices.filter(d => d.transport === "TCP"))
+      
+      // If selected device was USB and no longer connected, clear selection
+      if (selectedDevice?.transport === "USB") {
+        const remainingDevices = devices.filter(d => d.transport === "TCP")
+        setSelectedDevice(remainingDevices.length > 0 ? remainingDevices[0] : undefined)
+      }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleWirelessDeviceConnected = (device: DeviceInfo) => {
+    setDevices(prevDevices => {
+      const existingDevice = prevDevices.find(d => d.serial_no === device.serial_no)
+      if (existingDevice) {
+        // Update existing device
+        return prevDevices.map(d => 
+          d.serial_no === device.serial_no ? device : d
+        )
+      } else {
+        // Add new wireless device
+        return [...prevDevices, device]
+      }
+    })
+    
+    // Auto-select the newly connected device if no device is currently selected
+    if (!selectedDevice) {
+      setSelectedDevice(device)
     }
   }
 
@@ -64,6 +97,7 @@ function App() {
             selectedDevice={selectedDevice}
             onDeviceSelect={setSelectedDevice}
             onRefreshDevices={refreshDevices}
+            onWirelessDeviceConnected={handleWirelessDeviceConnected}
             isLoading={isLoading}
           />
           <MainContent selectedDevice={selectedDevice} />

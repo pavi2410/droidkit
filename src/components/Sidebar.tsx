@@ -4,27 +4,23 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { WirelessConnectionDialog } from "@/components/WirelessConnectionDialog"
+import { DeviceInfo } from "@/types/device"
 import { 
   Smartphone, 
   Play, 
   RefreshCw, 
   Wifi, 
-  WifiOff
+  Usb,
+  Plus
 } from "lucide-react"
-
-interface DeviceInfo {
-  transport: "USB" | "TCP"
-  serial_no: string
-  model: string
-  android_version: string
-  sdk_version: string
-}
 
 interface SidebarProps {
   devices: DeviceInfo[]
   selectedDevice?: DeviceInfo
   onDeviceSelect: (device: DeviceInfo) => void
   onRefreshDevices: () => void
+  onWirelessDeviceConnected: (device: DeviceInfo) => void
   isLoading?: boolean
 }
 
@@ -33,6 +29,7 @@ export function Sidebar({
   selectedDevice, 
   onDeviceSelect, 
   onRefreshDevices,
+  onWirelessDeviceConnected,
   isLoading = false 
 }: SidebarProps) {
   const [availableAvds, setAvailableAvds] = useState<string[]>([])
@@ -71,14 +68,22 @@ export function Sidebar({
     <aside className="w-80 border-r bg-muted/20 p-4 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Devices</h2>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={onRefreshDevices}
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex gap-1">
+          <WirelessConnectionDialog onDeviceConnected={onWirelessDeviceConnected}>
+            <Button variant="ghost" size="sm" title="Connect Wireless Device">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </WirelessConnectionDialog>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onRefreshDevices}
+            disabled={isLoading}
+            title="Refresh Devices"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 space-y-3">
@@ -107,10 +112,10 @@ export function Sidebar({
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="truncate">{device.model}</span>
                   <div className="flex items-center gap-1">
-                    {device.transport === "USB" ? (
-                      <Wifi className="h-3 w-3 text-green-500" />
+                    {device.transport === "TCP" ? (
+                      <Wifi className="h-3 w-3 text-blue-500" />
                     ) : (
-                      <WifiOff className="h-3 w-3 text-blue-500" />
+                      <Usb className="h-3 w-3 text-green-500" />
                     )}
                   </div>
                 </CardTitle>
@@ -125,10 +130,10 @@ export function Sidebar({
                 </div>
                 <div className="mt-2">
                   <Badge 
-                    variant={device.transport === "USB" ? "default" : "secondary"}
+                    variant={device.transport === "TCP" ? "secondary" : "default"}
                     className="text-xs"
                   >
-                    {device.transport}
+                    {device.transport === "TCP" ? "Wireless" : "USB"}
                   </Badge>
                 </div>
               </CardContent>

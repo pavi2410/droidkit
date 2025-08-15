@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { DeviceInfo } from "@/types/device"
 import { 
   Terminal, 
   RefreshCw,
@@ -12,7 +13,11 @@ import {
   Trash2
 } from "lucide-react"
 
-export function LogcatViewer() {
+interface LogcatViewerProps {
+  selectedDevice?: DeviceInfo
+}
+
+export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
   const [logs, setLogs] = useState<string>("")
   const [filteredLogs, setFilteredLogs] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -20,9 +25,18 @@ export function LogcatViewer() {
   const [lineCount, setLineCount] = useState(100)
 
   const loadLogs = async () => {
+    if (!selectedDevice) {
+      setLogs("")
+      setFilteredLogs([])
+      return
+    }
+
     setIsLoading(true)
     try {
-      const logOutput = await invoke<string>("get_logcat", { lines: lineCount })
+      const logOutput = await invoke<string>("get_logcat_for_device", { 
+        deviceSerial: selectedDevice.serial_no,
+        lines: lineCount 
+      })
       setLogs(logOutput)
       const lines = logOutput.split('\n').filter(line => line.trim())
       setFilteredLogs(lines)
@@ -88,7 +102,7 @@ export function LogcatViewer() {
 
   useEffect(() => {
     loadLogs()
-  }, [])
+  }, [selectedDevice, lineCount])
 
   useEffect(() => {
     filterLogs(searchTerm)
