@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "droidkit",
-  "version": "3.0.4",
+  "version": "0.0.0",
   "identifier": "com.pavi2410.droidkit",
   "build": {
     "beforeDevCommand": "bun run dev",
