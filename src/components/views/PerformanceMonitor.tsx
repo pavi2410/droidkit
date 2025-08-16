@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeviceInfo } from "@/tauri-commands"
 import { Activity } from "lucide-react"
 
@@ -8,19 +7,17 @@ interface PerformanceMonitorProps {
 
 export function PerformanceMonitor({ selectedDevice }: PerformanceMonitorProps) {
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Performance Monitor</CardTitle>
-        <CardDescription>
+    <div className="h-full">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">Performance Monitor</h2>
+        <p className="text-muted-foreground">
           Monitor system performance of {selectedDevice.model}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-center h-64 text-muted-foreground">
-          <Activity className="h-8 w-8 mb-2" />
-          <p>Performance monitoring coming soon...</p>
-        </div>
-      </CardContent>
-    </Card>
+        </p>
+      </div>
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Activity className="h-8 w-8 mb-2" />
+        <p>Performance monitoring coming soon...</p>
+      </div>
+    </div>
   )
 }

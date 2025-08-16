@@ -16,7 +16,13 @@ import {
   Plus,
   Monitor,
   Loader2,
-  Circle
+  Circle,
+  Battery,
+  Signal,
+  WifiIcon,
+  MoreHorizontal,
+  Power,
+  Unplug
 } from "lucide-react"
 import { useState } from "react"
 
@@ -92,43 +98,102 @@ function UnifiedDeviceItem({ device, selectedDevice, onDeviceSelect, onDevicePai
                    (device.type === 'usb' && connectMutation.isPending) ||
                    (device.type === 'paired' && isConnecting)
 
+  const getConnectionStrength = () => {
+    if (device.type === 'connected') {
+      return device.data.transport === 'TCP' ? 3 : 4 // TCP = 3 bars, USB = 4 bars
+    }
+    return 2 // Default for other devices
+  }
+
+  const getBatteryLevel = () => {
+    // Simulate battery level (in real app, this would come from device)
+    return device.type === 'connected' ? Math.floor(Math.random() * 100) : null
+  }
+
+  const renderConnectionStrength = () => {
+    const strength = getConnectionStrength()
+    return (
+      <div className="flex items-center gap-0.5">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className={`w-0.5 h-2 rounded-sm ${
+              i < strength ? 'bg-green-500' : 'bg-gray-300'
+            }`}
+            style={{ height: `${4 + i * 2}px` }}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const batteryLevel = getBatteryLevel()
+
   return (
-    <Card className={`cursor-pointer transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+    <Card className={`group cursor-pointer transition-smooth hover-lift ${
+      isSelected ? 'ring-2 ring-primary shadow-sm' : 'hover:border-primary/20'
+    }`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3" onClick={handleClick}>
+          <div className="flex items-center gap-3 flex-1 min-w-0" onClick={handleClick}>
             {device.icon}
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{device.name}</span>
-              <span className="text-xs text-muted-foreground">{device.subtitle}</span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium truncate">{device.name}</span>
+                {device.type === 'connected' && (
+                  <div className="flex items-center gap-1">
+                    {renderConnectionStrength()}
+                    {batteryLevel && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Battery className="h-3 w-3" />
+                        <span>{batteryLevel}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground truncate">{device.subtitle}</span>
             </div>
           </div>
           
-          {device.type !== 'connected' && (
-            <>
-              {device.type === 'wireless' ? (
-                <PairingDialog device={device.data} onDevicePaired={onDevicePaired}>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Pair Device</span>
-                  </Button>
-                </PairingDialog>
-              ) : (
-                <Button variant="outline" size="sm" onClick={handleAction} disabled={isLoading}>
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : device.type === 'emulator' ? (
-                    <Play className="h-4 w-4" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">
-                    {device.type === 'emulator' ? 'Start Emulator' : 'Connect Device'}
-                  </span>
+          <div className="flex items-center gap-1">
+            {device.type === 'connected' && (
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Restart Device">
+                  <Power className="h-3 w-3" />
                 </Button>
-              )}
-            </>
-          )}
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Disconnect">
+                  <Unplug className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            
+            {device.type !== 'connected' && (
+              <>
+                {device.type === 'wireless' ? (
+                  <PairingDialog device={device.data} onDevicePaired={onDevicePaired}>
+                    <Button variant="outline" size="sm">
+                      <Plus className="h-4 w-4" />
+                      <span className="sr-only">Pair Device</span>
+                    </Button>
+                  </PairingDialog>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={handleAction} disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : device.type === 'emulator' ? (
+                      <Play className="h-4 w-4" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                      {device.type === 'emulator' ? 'Start Emulator' : 'Connect Device'}
+                    </span>
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -304,14 +369,15 @@ export function DeviceList({
                 Connected Devices ({connectedGroup.length})
               </h3>
               <div className="grid gap-3">
-                {connectedGroup.map((device) => (
-                  <UnifiedDeviceItem
-                    key={device.id}
-                    device={device}
-                    selectedDevice={selectedDevice}
-                    onDeviceSelect={onDeviceSelect}
-                    onDevicePaired={handleDevicePaired}
-                  />
+                {connectedGroup.map((device, index) => (
+                  <div key={device.id} className="stagger-animation" style={{ animationDelay: `${index * 0.05}s` }}>
+                    <UnifiedDeviceItem
+                      device={device}
+                      selectedDevice={selectedDevice}
+                      onDeviceSelect={onDeviceSelect}
+                      onDevicePaired={handleDevicePaired}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

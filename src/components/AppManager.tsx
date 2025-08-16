@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { type DeviceInfo } from "@/tauri-commands"
@@ -49,10 +48,10 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Installed Applications ({filteredApps.length})</span>
+    <div className="h-full flex flex-col">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Installed Applications ({filteredApps.length})</h2>
           <Button
             variant="outline"
             size="sm"
@@ -61,7 +60,7 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-        </CardTitle>
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -73,9 +72,10 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
             />
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="max-h-96 overflow-y-auto">
+      </div>
+      
+      <div className="flex-1 border rounded-lg overflow-hidden">
+        <div className="overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <RefreshCw className="h-6 w-6 animate-spin mr-2" />
@@ -149,7 +149,7 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

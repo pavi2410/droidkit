@@ -1,7 +1,13 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { 
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator
+} from "@/components/ui/breadcrumb"
 import { type DeviceInfo, type FileInfo } from "@/tauri-commands"
 import { useDeviceFiles, useDownloadFile, useRefreshDeviceFiles } from "@/hooks/useDeviceDataQueries"
 import { 
@@ -34,6 +40,25 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
   const navigateToPath = (path: string) => {
     setCurrentPath(path)
     setPathHistory(prev => [...prev, path])
+  }
+
+  const navigateToBreadcrumb = (path: string) => {
+    setCurrentPath(path)
+    // Update history to remove everything after the clicked breadcrumb
+    const pathIndex = pathHistory.indexOf(path)
+    if (pathIndex !== -1) {
+      setPathHistory(pathHistory.slice(0, pathIndex + 1))
+    }
+  }
+
+  const getPathSegments = () => {
+    return currentPath.split('/').filter(segment => segment !== '')
+  }
+
+  const getPathUpTo = (index: number) => {
+    const segments = getPathSegments()
+    if (index === -1) return '/'
+    return '/' + segments.slice(0, index + 1).join('/')
   }
 
   const goBack = () => {
@@ -73,10 +98,10 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>File Explorer</span>
+    <div className="h-full flex flex-col">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">File Explorer</h2>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -102,13 +127,36 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
-        </CardTitle>
-        <div className="text-sm text-muted-foreground font-mono bg-muted/50 p-2 rounded">
-          {currentPath}
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="max-h-96 overflow-y-auto">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink 
+                className="cursor-pointer" 
+                onClick={() => navigateToBreadcrumb('/')}
+              >
+                <Home className="h-4 w-4" />
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            {getPathSegments().map((segment, index) => (
+              <React.Fragment key={index}>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink 
+                    className="cursor-pointer hover:text-foreground" 
+                    onClick={() => navigateToBreadcrumb(getPathUpTo(index))}
+                  >
+                    {segment}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </React.Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+      
+      <div className="flex-1 border rounded-lg overflow-hidden">
+        <div className="overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <RefreshCw className="h-6 w-6 animate-spin mr-2" />
@@ -174,7 +222,7 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

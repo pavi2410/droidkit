@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
@@ -88,10 +87,10 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
   }
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="flex-shrink-0">
-        <CardTitle className="flex items-center justify-between">
-          <span>Logcat Viewer</span>
+    <div className="h-full flex flex-col">
+      <div className="flex-shrink-0 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Logcat Viewer</h2>
           <div className="flex items-center gap-2">
             <Button
               variant={isAutoRefresh ? "default" : "outline"}
@@ -124,7 +123,7 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </CardTitle>
+        </div>
         
         <div className="space-y-3">
           <div className="flex items-center gap-4">
@@ -155,9 +154,9 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
             />
           </div>
         </div>
-      </CardHeader>
+      </div>
       
-      <CardContent className="flex-1 p-0 overflow-hidden">
+      <div className="flex-1 border rounded-lg overflow-hidden">
         <div className="h-full flex flex-col">
           <div className="flex-shrink-0 p-3 border-b bg-muted/50">
             <div className="flex items-center justify-between text-sm">
@@ -219,7 +218,7 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

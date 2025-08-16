@@ -17,6 +17,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -101,7 +102,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         <DialogDescription className="sr-only">
           Customize your DroidKit settings here.
         </DialogDescription>
-        <SidebarProvider className="items-start">
+        <SidebarProvider className="items-start min-h-0">
           <Sidebar collapsible="none" className="hidden md:flex">
             <SidebarContent>
               <SidebarGroup>
@@ -130,19 +131,18 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-              
-              <div className="mt-auto p-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReset}
-                  className="w-full gap-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset to Defaults
-                </Button>
-              </div>
             </SidebarContent>
+            <SidebarFooter className="max-lg:pb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="w-full gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset to Defaults
+              </Button>
+            </SidebarFooter>
           </Sidebar>
           
           <main className="flex h-[580px] flex-1 flex-col overflow-hidden">

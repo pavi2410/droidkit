@@ -9,8 +9,8 @@ import '@fontsource-variable/jost';
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App/>
-      <ReactQueryDevtools initialIsOpen={false} />
+      <App />
+      {false && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   </React.StrictMode>,
 );

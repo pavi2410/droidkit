@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { 
-  Sidebar as SidebarContainer,
+  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupLabel,
@@ -46,7 +46,7 @@ const navigationItems = [
   { id: 'shell', label: 'Shell', icon: Terminal }
 ]
 
-export function Sidebar({ 
+export function AppSidebar({ 
   onRefreshDevices,
   onWirelessDeviceConnected,
   isLoading = false,
@@ -56,7 +56,7 @@ export function Sidebar({
   const { refreshAll } = useRefreshDevices()
 
   return (
-    <SidebarContainer variant="inset">
+    <Sidebar variant="inset" className="h-[calc(100svh-var(--statusbar-height))]">
       <SidebarHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -123,6 +123,6 @@ export function Sidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </SidebarContainer>
+    </Sidebar>
   )
 }

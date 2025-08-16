@@ -118,3 +118,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+html, body {
+  overscroll-behavior: none;
+}
