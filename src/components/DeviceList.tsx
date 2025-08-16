@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { PairingDialog } from "@/components/PairingDialog"
 import { connectWirelessDevice, type DeviceInfo } from "@/tauri-commands"
-import { useUSBDevices, useWirelessDevices, useConnectToDevice, useRefreshDevices } from "@/hooks/useDeviceQueries"
+import { useUSBDevices, useWirelessDevices, useConnectToDevice } from "@/hooks/useDeviceQueries"
 import { usePairedDevices } from "@/hooks/usePairedDevices"
 import { useAppSettings } from "@/hooks/useAppSettings"
 import { useAvdList, useLaunchAvd } from "@/hooks/useEmulators"
@@ -18,9 +18,6 @@ import {
   Loader2,
   Circle,
   Battery,
-  Signal,
-  WifiIcon,
-  MoreHorizontal,
   Power,
   Unplug
 } from "lucide-react"

@@ -30,6 +30,9 @@ export interface DiscoveredWirelessDevice {
   fullname: string;
   addresses: string[];
   port: number;
+  connection_port?: number;
+  is_paired: boolean;
+  is_connected: boolean;
 }
 
 export type ConnectionMethod = 
@@ -158,3 +161,99 @@ export const connectToDiscoveredDevice = (device: DiscoveredDevice): Promise<Dev
  */
 export const executeShellCommand = (deviceSerial: string, command: string): Promise<string> => 
   invoke('execute_shell_command_cmd', { deviceSerial, command });
+
+// System Information Types
+export interface SystemInfo {
+  hardware: HardwareInfo;
+  display: DisplayInfo;
+  battery?: BatteryInfo;
+  build: BuildInfo;
+  network: NetworkInfo;
+}
+
+export interface HardwareInfo {
+  cpu_architecture?: string;
+  cpu_abi_list?: string;
+  total_memory?: string;
+  available_memory?: string;
+  internal_storage_total?: string;
+  internal_storage_available?: string;
+  manufacturer?: string;
+  brand?: string;
+  board?: string;
+  hardware?: string;
+}
+
+export interface DisplayInfo {
+  resolution?: string;
+  density?: string;
+  physical_size?: string;
+  refresh_rate?: string;
+  orientation?: string;
+}
+
+export interface BatteryInfo {
+  level?: number;
+  status?: string;
+  health?: string;
+  temperature?: number;
+  voltage?: number;
+  technology?: string;
+}
+
+export interface BuildInfo {
+  fingerprint?: string;
+  build_date?: string;
+  build_user?: string;
+  build_host?: string;
+  security_patch?: string;
+  bootloader?: string;
+  baseband?: string;
+  build_id?: string;
+  build_tags?: string;
+  build_type?: string;
+}
+
+export interface NetworkInfo {
+  wifi_status?: string;
+  ip_addresses: string[];
+  mac_addresses: string[];
+  network_interfaces: NetworkInterface[];
+}
+
+export interface NetworkInterface {
+  name: string;
+  ip_address?: string;
+  mac_address?: string;
+  status?: string;
+}
+
+/**
+ * Get hardware information for a specific device
+ */
+export const getDeviceHardwareInfo = (deviceSerial: string): Promise<HardwareInfo> => 
+  invoke('get_device_hardware_info_cmd', { deviceSerial });
+
+/**
+ * Get display information for a specific device
+ */
+export const getDeviceDisplayInfo = (deviceSerial: string): Promise<DisplayInfo> => 
+  invoke('get_device_display_info_cmd', { deviceSerial });
+
+/**
+ * Get battery information for a specific device
+ */
+export const getDeviceBatteryInfo = (deviceSerial: string): Promise<BatteryInfo | null> => 
+  invoke('get_device_battery_info_cmd', { deviceSerial });
+
+/**
+ * Get build information for a specific device
+ */
+export const getDeviceBuildInfo = (deviceSerial: string): Promise<BuildInfo> => 
+  invoke('get_device_build_info_cmd', { deviceSerial });
+
+/**
+ * Get network information for a specific device
+ */
+export const getDeviceNetworkInfo = (deviceSerial: string): Promise<NetworkInfo> => 
+  invoke('get_device_network_info_cmd', { deviceSerial });

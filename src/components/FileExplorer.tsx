@@ -30,8 +30,7 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
   // Use TanStack Query for file operations
   const {
     data: files = [],
-    isLoading,
-    error
+    isLoading
   } = useDeviceFiles(selectedDevice, currentPath)
 
   const downloadFileMutation = useDownloadFile()

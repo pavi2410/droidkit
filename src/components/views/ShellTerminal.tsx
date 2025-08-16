@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent, useCallback } from "react"
+import { useState, useRef, useEffect, KeyboardEvent } from "react"
 import { DeviceInfo, executeShellCommand } from "@/tauri-commands"
 import { Terminal, Trash2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"

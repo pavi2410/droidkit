@@ -37,7 +37,7 @@ interface SidebarProps {
 
 const navigationItems = [
   { id: 'devices', label: 'Devices', icon: Smartphone },
-  { id: 'overview', label: 'Overview', icon: Info },
+  { id: 'system-info', label: 'System Info', icon: Info },
   { id: 'files', label: 'Files', icon: FileText },
   { id: 'logcat', label: 'Logcat', icon: Terminal },
   { id: 'apps', label: 'Apps', icon: Package },

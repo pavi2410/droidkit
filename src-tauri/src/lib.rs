@@ -4,12 +4,14 @@ use crate::adb_commands::{
     connect_tcp_device, reconnect_device, pair_device_with_code, generate_pairing_data, discover_wireless_devices,
     list_discovered_devices, connect_to_discovered_device, discover_wireless_devices_detailed, get_connection_port_for_device,
 };
+use crate::system_info::{HardwareInfo, DisplayInfo, BatteryInfo, BuildInfo, NetworkInfo, get_hardware_info, get_display_info, get_battery_info, get_build_info, get_network_info};
 use crate::emulator::{get_android_home, launch_avd, list_avds};
 use std::net::IpAddr;
 
 mod adb_commands;
 mod emulator;
 mod utils;
+mod system_info;
 
 #[tauri::command]
 fn device_info() -> Result<DeviceInfo, ()> {
@@ -161,6 +163,66 @@ fn execute_shell_command_cmd(device_serial: String, command: String) -> Result<S
         .and_then(|mut device| execute_shell_command(&mut device, &command))
 }
 
+#[tauri::command]
+async fn get_device_hardware_info_cmd(device_serial: String) -> Result<HardwareInfo, String> {
+    let device_serial_clone = device_serial.clone();
+    tokio::task::spawn_blocking(move || {
+        reconnect_device(&device_serial_clone)
+            .ok_or_else(|| "Failed to connect to device".to_string())
+            .map(|mut device| get_hardware_info(&mut device))
+    })
+    .await
+    .map_err(|e| format!("Task execution failed: {}", e))?
+}
+
+#[tauri::command]
+async fn get_device_display_info_cmd(device_serial: String) -> Result<DisplayInfo, String> {
+    let device_serial_clone = device_serial.clone();
+    tokio::task::spawn_blocking(move || {
+        reconnect_device(&device_serial_clone)
+            .ok_or_else(|| "Failed to connect to device".to_string())
+            .map(|mut device| get_display_info(&mut device))
+    })
+    .await
+    .map_err(|e| format!("Task execution failed: {}", e))?
+}
+
+#[tauri::command]
+async fn get_device_battery_info_cmd(device_serial: String) -> Result<Option<BatteryInfo>, String> {
+    let device_serial_clone = device_serial.clone();
+    tokio::task::spawn_blocking(move || {
+        reconnect_device(&device_serial_clone)
+            .ok_or_else(|| "Failed to connect to device".to_string())
+            .map(|mut device| get_battery_info(&mut device))
+    })
+    .await
+    .map_err(|e| format!("Task execution failed: {}", e))?
+}
+
+#[tauri::command]
+async fn get_device_build_info_cmd(device_serial: String) -> Result<BuildInfo, String> {
+    let device_serial_clone = device_serial.clone();
+    tokio::task::spawn_blocking(move || {
+        reconnect_device(&device_serial_clone)
+            .ok_or_else(|| "Failed to connect to device".to_string())
+            .map(|mut device| get_build_info(&mut device))
+    })
+    .await
+    .map_err(|e| format!("Task execution failed: {}", e))?
+}
+
+#[tauri::command]
+async fn get_device_network_info_cmd(device_serial: String) -> Result<NetworkInfo, String> {
+    let device_serial_clone = device_serial.clone();
+    tokio::task::spawn_blocking(move || {
+        reconnect_device(&device_serial_clone)
+            .ok_or_else(|| "Failed to connect to device".to_string())
+            .map(|mut device| get_network_info(&mut device))
+    })
+    .await
+    .map_err(|e| format!("Task execution failed: {}", e))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -185,7 +247,12 @@ pub fn run() {
             list_discovered_devices_cmd,
             discover_wireless_devices_detailed_cmd,
             connect_to_discovered_device_cmd,
-            execute_shell_command_cmd
+            execute_shell_command_cmd,
+            get_device_hardware_info_cmd,
+            get_device_display_info_cmd,
+            get_device_battery_info_cmd,
+            get_device_build_info_cmd,
+            get_device_network_info_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

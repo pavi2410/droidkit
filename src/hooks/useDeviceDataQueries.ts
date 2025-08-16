@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { DeviceInfo, FileInfo } from '@/tauri-commands'
+import type { DeviceInfo } from '@/tauri-commands'
 import {
   browseFilesForDevice,
   getAppsForDevice,

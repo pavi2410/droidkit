@@ -2,7 +2,7 @@ import { FileExplorer } from "@/components/FileExplorer"
 import { AppManager } from "@/components/AppManager"
 import { LogcatViewer } from "@/components/LogcatViewer"
 import { DeviceList } from "@/components/DeviceList"
-import { DeviceOverview } from "@/components/views/DeviceOverview"
+import { SystemInfo } from "@/components/views/SystemInfo"
 import { ScreenControl } from "@/components/views/ScreenControl"
 import { PerformanceMonitor } from "@/components/views/PerformanceMonitor"
 import { ShellTerminal } from "@/components/views/ShellTerminal"
@@ -57,8 +57,8 @@ export function MainContent({
   // Render the appropriate view based on activeView
   const renderView = () => {
     switch (activeView) {
-      case 'overview':
-        return <DeviceOverview selectedDevice={selectedDevice} />
+      case 'system-info':
+        return <SystemInfo selectedDevice={selectedDevice} />
       case 'files':
         return <FileExplorer selectedDevice={selectedDevice} />
       case 'logcat':
@@ -72,7 +72,7 @@ export function MainContent({
       case 'shell':
         return <ShellTerminal selectedDevice={selectedDevice} />
       default:
-        return <DeviceOverview selectedDevice={selectedDevice} />
+        return <SystemInfo selectedDevice={selectedDevice} />
     }
   }
 
