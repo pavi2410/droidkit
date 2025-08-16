@@ -1,6 +1,6 @@
 use crate::adb_commands::{
     DeviceInfo, FileInfo, PairingData, DiscoveredDevice, DiscoveredWirelessDevice, get_connected_device, get_device_info,
-    get_installed_packages, get_logcat_output, list_files, pull_file,
+    get_installed_packages, get_logcat_output, list_files, pull_file, execute_shell_command,
     connect_tcp_device, reconnect_device, pair_device_with_code, generate_pairing_data, discover_wireless_devices,
     list_discovered_devices, connect_to_discovered_device, discover_wireless_devices_detailed, get_connection_port_for_device,
 };
@@ -154,6 +154,13 @@ fn connect_to_discovered_device_cmd(device: DiscoveredDevice) -> Result<DeviceIn
         })
 }
 
+#[tauri::command]
+fn execute_shell_command_cmd(device_serial: String, command: String) -> Result<String, String> {
+    reconnect_device(&device_serial)
+        .ok_or_else(|| "Failed to connect to device".to_string())
+        .and_then(|mut device| execute_shell_command(&mut device, &command))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -177,7 +184,8 @@ pub fn run() {
             discover_devices,
             list_discovered_devices_cmd,
             discover_wireless_devices_detailed_cmd,
-            connect_to_discovered_device_cmd
+            connect_to_discovered_device_cmd,
+            execute_shell_command_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

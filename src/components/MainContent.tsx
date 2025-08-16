@@ -28,7 +28,7 @@ export function MainContent({
   // Devices view is always available
   if (activeView === 'devices') {
     return (
-      <main className="flex-1 px-6 py-4 border-t border-l rounded-tl-xl">
+      <main className="flex-1 p-4 border-t border-l rounded-tl-xl">
         <DeviceList
           connectedDevices={devices}
           selectedDevice={selectedDevice}
@@ -77,7 +77,7 @@ export function MainContent({
   }
 
   return (
-    <main className="flex-1 px-6 py-4 border-t border-l rounded-tl-xl">
+    <main className="flex-1 p-4 border-t border-l rounded-tl-xl">
       <div className="h-full">
         {renderView()}
       </div>

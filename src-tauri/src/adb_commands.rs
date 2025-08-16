@@ -513,6 +513,26 @@ pub(crate) fn get_device_sdk_version(device: &mut Device) -> Option<String> {
     getprop_from_device(device, "ro.build.version.sdk")
 }
 
+pub(crate) fn execute_shell_command(device: &mut Device, command: &str) -> Result<String, String> {
+    let mut buf: Vec<u8> = Vec::new();
+    
+    // Split command into parts for shell execution
+    let command_parts: Vec<&str> = command.trim().split_whitespace().collect();
+    if command_parts.is_empty() {
+        return Err("Empty command".to_string());
+    }
+
+    let result = device.shell_command(&command_parts, &mut buf);
+
+    match result {
+        Ok(_) => {
+            let output = String::from_utf8_lossy(&buf);
+            Ok(output.to_string())
+        }
+        Err(e) => Err(format!("Command execution failed: {:?}", e)),
+    }
+}
+
 pub(crate) fn get_device_info(device: &mut Device) -> Result<DeviceInfo, ()> {
     if let Some(serial_no) = get_device_serial(device) {
         if let Some(model) = get_device_model(device) {

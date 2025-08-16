@@ -152,3 +152,9 @@ export const discoverWirelessDevicesDetailed = (): Promise<DiscoveredWirelessDev
  */
 export const connectToDiscoveredDevice = (device: DiscoveredDevice): Promise<DeviceInfo> => 
   invoke('connect_to_discovered_device_cmd', { device });
+
+/**
+ * Execute a shell command on a specific device
+ */
+export const executeShellCommand = (deviceSerial: string, command: string): Promise<string> => 
+  invoke('execute_shell_command_cmd', { deviceSerial, command });
