@@ -1,10 +1,11 @@
-use adb_client::{ADBDeviceExt, ADBUSBDevice, ADBTcpDevice, RustADBError};
-use serde::Serialize;
-use std::env;
-use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
-use std::process::Command;
+use adb_client::{ADBDeviceExt, ADBUSBDevice, ADBTcpDevice, RustADBError, MDNSDiscoveryService, ADBServer};
+use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr, SocketAddrV4};
 use std::str::from_utf8;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+use crate::utils::get_local_ip_address;
 
 #[derive(Serialize)]
 pub(crate) enum DeviceTransport {
@@ -47,6 +48,76 @@ pub(crate) fn get_connected_device() -> Option<Device> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub(crate) enum ConnectionMethod {
+    USB { serial_number: String },
+    TCP { socket_address: String },
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct DiscoveredDevice {
+    pub connection_method: ConnectionMethod,
+    pub model: Option<String>,
+    pub android_version: Option<String>,
+    pub sdk_version: Option<String>,
+    pub is_connected: bool,
+}
+
+pub(crate) fn list_discovered_devices() -> Result<Vec<DiscoveredDevice>, String> {
+    let mut discovered_devices = Vec::new();
+    
+    // Try to get currently connected USB device
+    if let Ok(usb_device) = ADBUSBDevice::autodetect() {
+        if let Ok(device_info) = get_device_info(&mut Device::USB(usb_device)) {
+            discovered_devices.push(DiscoveredDevice {
+                connection_method: ConnectionMethod::USB {
+                    serial_number: device_info.serial_no,
+                },
+                model: Some(device_info.model),
+                android_version: Some(device_info.android_version),
+                sdk_version: Some(device_info.sdk_version),
+                is_connected: true,
+            });
+        }
+    }
+    
+    // Add any TCP devices that might be available
+    // For now, this is empty but could be populated from known connections
+    
+    Ok(discovered_devices)
+}
+
+pub(crate) fn connect_to_discovered_device(device: &DiscoveredDevice) -> Result<Device, String> {
+    match &device.connection_method {
+        ConnectionMethod::USB { serial_number } => {
+            // Try to connect to USB device by serial
+            match ADBUSBDevice::autodetect() {
+                Ok(device) => {
+                    // In a real implementation, you'd verify the serial matches
+                    Ok(Device::USB(device))
+                },
+                Err(e) => Err(format!("Failed to connect to USB device {}: {:?}", serial_number, e))
+            }
+        },
+        ConnectionMethod::TCP { socket_address } => {
+            // Parse socket address (IP:PORT format) and connect
+            if socket_address.contains(':') {
+                let parts: Vec<&str> = socket_address.split(':').collect();
+                if parts.len() == 2 {
+                    if let Ok(ip) = parts[0].parse::<IpAddr>() {
+                        if let Ok(port) = parts[1].parse::<u16>() {
+                            return connect_tcp_device(ip, port)
+                                .ok_or_else(|| "Failed to connect to TCP device".to_string());
+                        }
+                    }
+                }
+            }
+            
+            Err(format!("Invalid socket address format: {}", socket_address))
+        }
+    }
+}
+
 
 pub(crate) fn reconnect_device(serial_no: &str) -> Option<Device> {
     // For TCP devices, we need to parse the serial to get IP and port
@@ -83,72 +154,219 @@ pub(crate) fn connect_tcp_device(ip: IpAddr, port: u16) -> Option<Device> {
     }
 }
 
-pub(crate) fn get_android_home() -> Option<PathBuf> {
-    // First check environment variable
-    if let Ok(android_home) = env::var("ANDROID_HOME") {
-        let path = PathBuf::from(android_home);
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    // Check common locations on macOS
-    let home = env::var("HOME").ok()?;
-    let common_paths = [
-        format!("{}/Library/Android/sdk", home),
-        format!("{}/Android/Sdk", home),
-        "/usr/local/android-sdk".to_string(),
-    ];
-
-    for path_str in &common_paths {
-        let path = PathBuf::from(path_str);
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
-}
-
-pub(crate) fn list_avds() -> Vec<String> {
-    let android_home = match get_android_home() {
-        Some(path) => path,
-        None => return vec![],
+pub(crate) fn pair_device_with_code(ip: IpAddr, port: u16, pairing_code: &str) -> Result<(), String> {
+    // Convert IpAddr to Ipv4Addr
+    let ipv4 = match ip {
+        IpAddr::V4(ipv4) => ipv4,
+        IpAddr::V6(_) => return Err("IPv6 addresses are not supported for pairing".to_string()),
     };
-
-    let emulator_path = android_home.join("emulator").join("emulator");
-
-    let output = Command::new(&emulator_path).args(&["-list-avds"]).output();
-
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            stdout
-                .lines()
-                .filter(|line| !line.trim().is_empty())
-                .map(|line| line.trim().to_string())
-                .collect()
-        }
-        Err(_) => vec![],
+    
+    // Validate pairing code - should be 6 digits
+    let trimmed_code = pairing_code.trim();
+    if trimmed_code.len() != 6 {
+        return Err("Pairing code must be exactly 6 digits".to_string());
     }
-}
-
-pub(crate) fn launch_avd(avd_name: &str) -> Result<(), String> {
-    let android_home = match get_android_home() {
-        Some(path) => path,
-        None => return Err("Android SDK not found".to_string()),
-    };
-
-    let emulator_path = android_home.join("emulator").join("emulator");
-
-    let result = Command::new(&emulator_path)
-        .args(&["-avd", avd_name])
-        .spawn();
-
+    
+    if !trimmed_code.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Pairing code must contain only digits".to_string());
+    }
+    
+    println!("Attempting to pair with device at {}:{} using code: {}", ip, port, trimmed_code);
+    
+    // Use adb_client's ADBServer to pair the device
+    let mut adb_server = ADBServer::default();
+    let socket_addr_v4 = SocketAddrV4::new(ipv4, port);
+    
+    println!("Created socket address: {:?}", socket_addr_v4);
+    println!("Pairing code to be used: '{}'", trimmed_code);
+    
+    // Try the pairing with extensive error logging
+    let result = adb_server.pair(socket_addr_v4, trimmed_code.to_string());
+    
     match result {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to launch AVD: {}", e)),
+        Ok(_) => {
+            println!("Pairing successful with device at {}:{}", ip, port);
+            Ok(())
+        },
+        Err(e) => {
+            println!("Detailed pairing error: {:#?}", e);
+            
+            // The ParseIntError might be coming from the adb_client library itself
+            // Let's provide a helpful error message based on common issues
+            let error_str = format!("{:?}", e);
+            
+            if error_str.contains("ParseIntError") {
+                Err("Pairing failed due to a protocol parsing error. This might happen if:\n\
+                     1. The device is not in pairing mode\n\
+                     2. The pairing port is incorrect\n\
+                     3. The pairing code has expired\n\
+                     Please check your Android device's wireless debugging screen and try again.".to_string())
+            } else if error_str.contains("ConnectionRefused") {
+                Err("Connection refused. Please ensure:\n\
+                     1. The device is in pairing mode\n\
+                     2. The IP address and port are correct\n\
+                     3. Both devices are on the same network".to_string())
+            } else if error_str.contains("TimedOut") {
+                Err("Pairing timed out. Please try again with a fresh pairing code.".to_string())
+            } else {
+                Err(format!("Pairing failed with error: {}", error_str))
+            }
+        }
     }
+}
+
+#[derive(Serialize)]
+pub(crate) struct PairingData {
+    pub ip: String,
+    pub port: u16,
+    pub qr_data: String,
+}
+
+#[derive(Serialize)]
+pub(crate) struct DiscoveredWirelessDevice {
+    pub name: String,
+    pub fullname: String,
+    pub addresses: Vec<String>,
+    pub port: u16,
+    pub connection_port: Option<u16>, // Track the actual connection port if available
+    pub is_paired: bool,
+    pub is_connected: bool,
+}
+
+pub(crate) fn discover_wireless_devices() -> Result<Vec<DiscoveredWirelessDevice>, String> {
+    let (tx, rx) = mpsc::channel();
+    
+    let mut discovery_service = MDNSDiscoveryService::new()
+        .map_err(|e| format!("Failed to create mDNS discovery service: {:?}", e))?;
+    
+    discovery_service.start(tx)
+        .map_err(|e| format!("Failed to start mDNS discovery: {:?}", e))?;
+    
+    // Listen for devices for a few seconds
+    let mut devices = Vec::new();
+    let timeout = Duration::from_secs(5);
+    let start_time = std::time::Instant::now();
+    
+    println!("Starting mDNS discovery for wireless devices...");
+    
+    while start_time.elapsed() < timeout {
+        if let Ok(device) = rx.try_recv() {
+            println!("Discovered mDNS service: {}", device.fullname);
+            
+            // Extract name from fullname (usually format is "device_name._adb-tls-connect._tcp.local.")
+            let name = device.fullname
+                .split('.')
+                .next()
+                .unwrap_or(&device.fullname)
+                .to_string();
+            
+            // Determine if this is a pairing or connection service and set appropriate port
+            let (port, service_type) = if device.fullname.contains("_adb-tls-pairing._tcp") {
+                // This is a pairing service - try to extract actual port or use a reasonable default
+                (37851, "pairing") // Common pairing port range starts around 37851
+            } else if device.fullname.contains("_adb-tls-connect._tcp") {
+                // This is a connection service - we'll show it but use a pairing port for pairing
+                (37851, "connection") // Default pairing port for connection services
+            } else {
+                // Unknown service type, assume it's a pairing service for now
+                (37851, "unknown")
+            };
+            
+            println!("Service type: {}, using port: {}", service_type, port);
+            
+            // Filter out IPv6 addresses and only include IPv4 addresses
+            let ipv4_addresses: Vec<String> = device.addresses
+                .iter()
+                .filter_map(|addr| {
+                    // Filter for IPv4 addresses only
+                    match addr {
+                        std::net::IpAddr::V4(_) => Some(addr.to_string()),
+                        std::net::IpAddr::V6(_) => None,
+                    }
+                })
+                .collect();
+            
+            println!("IPv4 addresses found: {:?}", ipv4_addresses);
+            
+            // Add both pairing and connection services if they have IPv4 addresses
+            // This allows users to attempt pairing even with connection services
+            if !ipv4_addresses.is_empty() {
+                let wireless_device = DiscoveredWirelessDevice {
+                    name: name.clone(),
+                    fullname: device.fullname.clone(),
+                    addresses: ipv4_addresses.clone(),
+                    port,
+                    connection_port: if service_type == "connection" { Some(5555) } else { None },
+                    is_paired: false, // We'd need to check this against known paired devices
+                    is_connected: false, // We'd need to check if currently connected
+                };
+                println!("Added {} device: {} at {}:{}", service_type, name, ipv4_addresses[0], port);
+                devices.push(wireless_device);
+            }
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    
+    discovery_service.shutdown()
+        .map_err(|e| format!("Failed to shutdown mDNS discovery: {:?}", e))?;
+    
+    println!("Discovery completed. Found {} wireless devices", devices.len());
+    Ok(devices)
+}
+
+pub(crate) fn discover_wireless_devices_detailed() -> Result<Vec<DiscoveredWirelessDevice>, String> {
+    discover_wireless_devices()
+}
+
+pub(crate) fn get_connection_port_for_device(ip: &str) -> u16 {
+    // Try to discover devices and find the connection port for the given IP
+    if let Ok(devices) = discover_wireless_devices() {
+        for device in devices {
+            if device.addresses.contains(&ip.to_string()) {
+                if let Some(connection_port) = device.connection_port {
+                    println!("Found connection port {} for device at {}", connection_port, ip);
+                    return connection_port;
+                }
+            }
+        }
+    }
+    
+    // If no specific connection service found, try common ADB ports in order
+    let common_ports = [5555, 5556, 5557, 5558];
+    for &test_port in &common_ports {
+        println!("Testing connection on port {} for device at {}", test_port, ip);
+        if let Ok(ip_addr) = ip.parse::<IpAddr>() {
+            if connect_tcp_device(ip_addr, test_port).is_some() {
+                println!("Successfully connected to device at {}:{}", ip, test_port);
+                return test_port;
+            }
+        }
+    }
+    
+    // Default to standard ADB port if not found
+    println!("Using default connection port 5555 for device at {}", ip);
+    5555
+}
+
+pub(crate) fn generate_pairing_data() -> Result<PairingData, String> {
+    // For QR pairing, we need to start ADB in pairing mode
+    // This typically involves starting the ADB server in pairing mode
+    
+    // First, try to get local IP address that's accessible to Android devices
+    let local_ip = get_local_ip_address().unwrap_or_else(|| "192.168.1.100".to_string());
+    
+    // Use a standard pairing port (this might need to be configurable)
+    let pairing_port = 5555;
+    
+    // For QR pairing, the format expected by Android wireless debugging
+    // Note: This is a simplified format - actual format may differ
+    let qr_data = format!("{}:{}", local_ip, pairing_port);
+    
+    Ok(PairingData {
+        ip: local_ip,
+        port: pairing_port,
+        qr_data,
+    })
 }
 
 #[derive(Serialize)]

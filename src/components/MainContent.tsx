@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileExplorer } from "@/components/FileExplorer"
 import { AppManager } from "@/components/AppManager"
 import { LogcatViewer } from "@/components/LogcatViewer"
-import { DeviceInfo } from "@/types/device"
+import { DeviceInfo } from "@/tauri-commands"
 import { 
   FileText, 
   Monitor, 

@@ -1,0 +1,117 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { DeviceInfo, FileInfo } from '@/tauri-commands'
+import {
+  browseFilesForDevice,
+  getAppsForDevice,
+  downloadFile,
+  getLogcatForDevice,
+} from '@/tauri-commands'
+
+// Query Keys for file and app operations
+export const fileKeys = {
+  all: ['files'] as const,
+  device: (deviceId: string) => [...fileKeys.all, 'device', deviceId] as const,
+  devicePath: (deviceId: string, path: string) => [...fileKeys.device(deviceId), 'path', path] as const,
+}
+
+export const appKeys = {
+  all: ['apps'] as const,
+  device: (deviceId: string) => [...appKeys.all, 'device', deviceId] as const,
+}
+
+export const logKeys = {
+  all: ['logs'] as const,
+  device: (deviceId: string) => [...logKeys.all, 'device', deviceId] as const,
+}
+
+// File Browser Queries
+export function useDeviceFiles(device: DeviceInfo | undefined, path: string) {
+  return useQuery({
+    queryKey: fileKeys.devicePath(device?.serial_no || '', path),
+    queryFn: () => browseFilesForDevice(device!.serial_no, path),
+    enabled: !!device,
+    staleTime: 30 * 1000, // Files change less frequently than device lists
+    retry: (failureCount, error) => {
+      // Don't retry on permission errors
+      if (error instanceof Error && error.message.includes('permission denied')) {
+        return false
+      }
+      return failureCount < 2
+    },
+  })
+}
+
+// App Manager Queries
+export function useDeviceApps(device: DeviceInfo | undefined) {
+  return useQuery({
+    queryKey: appKeys.device(device?.serial_no || ''),
+    queryFn: () => getAppsForDevice(device!.serial_no),
+    enabled: !!device,
+    staleTime: 5 * 60 * 1000, // Apps change even less frequently
+    retry: 2,
+  })
+}
+
+// Logcat Queries
+export function useDeviceLogs(device: DeviceInfo | undefined, lines: number = 100, enabled: boolean = true) {
+  return useQuery({
+    queryKey: logKeys.device(device?.serial_no || ''),
+    queryFn: () => getLogcatForDevice(device!.serial_no, lines),
+    enabled: !!device && enabled,
+    refetchInterval: 2000, // Refresh logs every 2 seconds when active
+    staleTime: 0, // Logs should always be fresh
+  })
+}
+
+// File Operations Mutations
+export function useDownloadFile() {
+  return useMutation({
+    mutationFn: ({ remotePath, localPath }: { remotePath: string; localPath: string }) =>
+      downloadFile(remotePath, localPath),
+    onSuccess: (_, { localPath }) => {
+      console.log(`File downloaded to: ${localPath}`)
+      // Could show a toast notification here
+    },
+    onError: (error) => {
+      console.error('Download failed:', error)
+      // Could show an error toast here
+    },
+  })
+}
+
+// Utility hooks for cache management
+export function useRefreshDeviceFiles(device: DeviceInfo | undefined, path: string) {
+  const queryClient = useQueryClient()
+  
+  return () => {
+    if (device) {
+      queryClient.invalidateQueries({ 
+        queryKey: fileKeys.devicePath(device.serial_no, path) 
+      })
+    }
+  }
+}
+
+export function useRefreshDeviceApps(device: DeviceInfo | undefined) {
+  const queryClient = useQueryClient()
+  
+  return () => {
+    if (device) {
+      queryClient.invalidateQueries({ 
+        queryKey: appKeys.device(device.serial_no) 
+      })
+    }
+  }
+}
+
+export function useInvalidateAllDeviceData(device: DeviceInfo | undefined) {
+  const queryClient = useQueryClient()
+  
+  return () => {
+    if (device) {
+      queryClient.invalidateQueries({ queryKey: fileKeys.device(device.serial_no) })
+      queryClient.invalidateQueries({ queryKey: appKeys.device(device.serial_no) })
+      queryClient.invalidateQueries({ queryKey: logKeys.device(device.serial_no) })
+    }
+  }
+}

@@ -12,7 +12,12 @@ export const AndroidSchema = z.object({
 export const DevicesSchema = z.object({
   pollingInterval: z.number().min(1).max(10).default(3),
   autoRefresh: z.boolean().default(true),
-  connectionTimeout: z.number().min(1000).max(30000).default(5000)
+  connectionTimeout: z.number().min(1000).max(30000).default(5000),
+  autoReconnectPaired: z.boolean().default(false),
+  autoDiscoverUSB: z.boolean().default(true),
+  autoDiscoverWireless: z.boolean().default(false),
+  wirelessDiscoveryInterval: z.number().min(10).max(300).default(30),
+  showUnpairedDevices: z.boolean().default(true)
 });
 
 export const FilesSchema = z.object({

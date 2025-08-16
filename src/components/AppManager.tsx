@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { DeviceInfo } from "@/types/device"
+import { type DeviceInfo } from "@/tauri-commands"
+import { useDeviceApps, useRefreshDeviceApps } from "@/hooks/useDeviceDataQueries"
 import { 
   Package, 
   Search,
@@ -18,61 +18,35 @@ interface AppManagerProps {
 }
 
 export function AppManager({ selectedDevice }: AppManagerProps) {
-  const [apps, setApps] = useState<string[]>([])
-  const [filteredApps, setFilteredApps] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
-  const loadApps = async () => {
-    if (!selectedDevice) {
-      setApps([])
-      setFilteredApps([])
-      return
-    }
+  // Use TanStack Query for app operations
+  const {
+    data: apps = [],
+    isLoading,
+    error
+  } = useDeviceApps(selectedDevice)
 
-    setIsLoading(true)
-    try {
-      const appList = await invoke<string[]>("get_apps_for_device", { 
-        deviceSerial: selectedDevice.serial_no 
-      })
-      setApps(appList)
-      setFilteredApps(appList)
-    } catch (error) {
-      console.error("Failed to load apps:", error)
-      setApps([])
-      setFilteredApps([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const refreshApps = useRefreshDeviceApps(selectedDevice)
 
-  const filterApps = (term: string) => {
-    const filtered = apps.filter(app => 
-      app.toLowerCase().includes(term.toLowerCase())
+  // Filter apps using useMemo for performance
+  const filteredApps = useMemo(() => {
+    if (!searchTerm) return apps
+    return apps.filter(app => 
+      app.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    setFilteredApps(filtered)
-  }
+  }, [apps, searchTerm])
 
   const isSystemApp = (packageName: string) => {
-    return packageName.startsWith("com.android.") || 
-           packageName.startsWith("android.") ||
-           packageName.includes("google") ||
-           packageName.includes("system")
+    return packageName.startsWith("com.android") || 
+           packageName.startsWith("com.google") ||
+           packageName.startsWith("android")
   }
 
   const getAppDisplayName = (packageName: string) => {
-    // Extract the app name from package name
     const parts = packageName.split(".")
     return parts[parts.length - 1].replace(/[_-]/g, " ")
   }
-
-  useEffect(() => {
-    loadApps()
-  }, [selectedDevice])
-
-  useEffect(() => {
-    filterApps(searchTerm)
-  }, [searchTerm, apps])
 
   return (
     <Card className="h-full">
@@ -82,7 +56,7 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={loadApps}
+            onClick={refreshApps}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -107,10 +81,18 @@ export function AppManager({ selectedDevice }: AppManagerProps) {
               <RefreshCw className="h-6 w-6 animate-spin mr-2" />
               Loading applications...
             </div>
+          ) : error ? (
+            <div className="text-center p-8 text-muted-foreground">
+              <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>Failed to load applications</p>
+              <p className="text-xs mt-1">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+            </div>
           ) : filteredApps.length === 0 ? (
             <div className="text-center p-8 text-muted-foreground">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No applications found</p>
+              <p>{searchTerm ? "No matching applications found" : "No applications found"}</p>
             </div>
           ) : (
             <div className="divide-y">

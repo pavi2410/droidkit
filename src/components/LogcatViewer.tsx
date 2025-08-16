@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { DeviceInfo } from "@/types/device"
+import { Slider } from "@/components/ui/slider"
+import { type DeviceInfo } from "@/tauri-commands"
+import { useDeviceLogs } from "@/hooks/useDeviceDataQueries"
 import { 
   Terminal, 
-  RefreshCw,
   Search,
+  Play,
+  Pause,
+  RefreshCw,
   Download,
   Trash2
 } from "lucide-react"
@@ -18,76 +21,60 @@ interface LogcatViewerProps {
 }
 
 export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
-  const [logs, setLogs] = useState<string>("")
-  const [filteredLogs, setFilteredLogs] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [lineCount, setLineCount] = useState(100)
+  const [isAutoRefresh, setIsAutoRefresh] = useState(true)
 
-  const loadLogs = async () => {
-    if (!selectedDevice) {
-      setLogs("")
-      setFilteredLogs([])
-      return
-    }
+  // Use TanStack Query for log operations
+  const {
+    data: logs = "",
+    isLoading,
+    error,
+    refetch
+  } = useDeviceLogs(selectedDevice, lineCount, isAutoRefresh)
 
-    setIsLoading(true)
-    try {
-      const logOutput = await invoke<string>("get_logcat_for_device", { 
-        deviceSerial: selectedDevice.serial_no,
-        lines: lineCount 
-      })
-      setLogs(logOutput)
-      const lines = logOutput.split('\n').filter(line => line.trim())
-      setFilteredLogs(lines)
-    } catch (error) {
-      console.error("Failed to load logcat:", error)
-      setLogs("")
-      setFilteredLogs([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const filterLogs = (term: string) => {
-    if (!term.trim()) {
-      setFilteredLogs(logs.split('\n').filter(line => line.trim()))
-      return
-    }
+  // Parse and filter logs
+  const filteredLogs = useMemo(() => {
+    if (!logs) return []
     
-    const lines = logs.split('\n').filter(line => line.trim())
-    const filtered = lines.filter(line => 
-      line.toLowerCase().includes(term.toLowerCase())
+    const logLines = logs.split('\n').filter(line => line.trim())
+    
+    if (!searchTerm) return logLines
+    
+    return logLines.filter(line => 
+      line.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    setFilteredLogs(filtered)
-  }
+  }, [logs, searchTerm])
 
   const getLogLevel = (line: string) => {
-    // Extract log level (V, D, I, W, E, F)
     const match = line.match(/\s([VDIWEF])\//)
-    return match ? match[1] : 'I'
-  }
-
-  const getLogLevelColor = (level: string) => {
+    if (!match) return null
+    
+    const level = match[1]
     switch (level) {
-      case 'V': return 'text-gray-500'      // Verbose
-      case 'D': return 'text-blue-500'      // Debug
-      case 'I': return 'text-green-500'     // Info
-      case 'W': return 'text-yellow-500'    // Warning
-      case 'E': return 'text-red-500'       // Error
-      case 'F': return 'text-purple-500'    // Fatal
-      default: return 'text-gray-700'
+      case 'V': return { label: 'VERBOSE', variant: 'outline' as const }
+      case 'D': return { label: 'DEBUG', variant: 'secondary' as const }
+      case 'I': return { label: 'INFO', variant: 'default' as const }
+      case 'W': return { label: 'WARN', variant: 'outline' as const }
+      case 'E': return { label: 'ERROR', variant: 'destructive' as const }
+      case 'F': return { label: 'FATAL', variant: 'destructive' as const }
+      default: return null
     }
   }
 
-  const exportLogs = () => {
+  const formatLogLine = (line: string) => {
+    // Basic log formatting - this could be enhanced further
+    return line.replace(/^(\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3})/, '$1')
+  }
+
+  const downloadLogs = () => {
     if (!logs) return
     
     const blob = new Blob([logs], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `logcat_${new Date().getTime()}.txt`
+    a.download = `logcat-${selectedDevice?.serial_no}-${new Date().toISOString()}.txt`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -95,38 +82,28 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
   }
 
   const clearLogs = () => {
-    setLogs("")
-    setFilteredLogs([])
-    setSearchTerm("")
+    // For now, just refetch to get fresh logs
+    // In a real implementation, you might want to call an ADB clear command
+    refetch()
   }
 
-  useEffect(() => {
-    loadLogs()
-  }, [selectedDevice, lineCount])
-
-  useEffect(() => {
-    filterLogs(searchTerm)
-  }, [searchTerm, logs])
-
   return (
-    <Card className="h-full">
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center justify-between">
           <span>Logcat Viewer</span>
           <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              value={lineCount}
-              onChange={(e) => setLineCount(parseInt(e.target.value) || 100)}
-              className="w-20"
-              min="10"
-              max="1000"
-              placeholder="Lines"
-            />
+            <Button
+              variant={isAutoRefresh ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsAutoRefresh(!isAutoRefresh)}
+            >
+              {isAutoRefresh ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={loadLogs}
+              onClick={() => refetch()}
               disabled={isLoading}
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -134,7 +111,7 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={exportLogs}
+              onClick={downloadLogs}
               disabled={!logs}
             >
               <Download className="h-4 w-4" />
@@ -143,57 +120,104 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
               variant="outline"
               size="sm"
               onClick={clearLogs}
-              disabled={!logs}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </CardTitle>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter logs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+        
+        <div className="space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter logs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2 min-w-fit">
+              <span className="text-sm text-muted-foreground">Lines:</span>
+              <span className="text-sm font-mono min-w-[3ch]">{lineCount}</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground min-w-fit">Log Count:</span>
+            <Slider
+              value={[lineCount]}
+              onValueChange={(value) => setLineCount(value[0])}
+              max={1000}
+              min={50}
+              step={50}
+              className="flex-1"
             />
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {filteredLogs.length} lines
-          </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="max-h-96 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              Loading logs...
+      
+      <CardContent className="flex-1 p-0 overflow-hidden">
+        <div className="h-full flex flex-col">
+          <div className="flex-shrink-0 p-3 border-b bg-muted/50">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {filteredLogs.length} lines
+                {searchTerm && ` (filtered from ${logs.split('\n').length})`}
+              </span>
+              {isAutoRefresh && (
+                <Badge variant="outline" className="text-xs">
+                  Auto-refresh: 2s
+                </Badge>
+              )}
             </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center p-8 text-muted-foreground">
-              <Terminal className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No logs found</p>
-              <p className="text-sm mt-1">Try refreshing or check device connection</p>
-            </div>
-          ) : (
-            <div className="p-3">
-              <div className="font-mono text-xs space-y-1 bg-black text-green-400 p-3 rounded max-h-80 overflow-y-auto">
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-3 font-mono text-xs">
+            {isLoading && filteredLogs.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                Loading logs...
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <Terminal className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Failed to load logs</p>
+                <p className="text-xs mt-1">
+                  {error instanceof Error ? error.message : "Unknown error"}
+                </p>
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <Terminal className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>{searchTerm ? "No matching log entries" : "No log entries"}</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
                 {filteredLogs.map((line, index) => {
-                  const level = getLogLevel(line)
+                  const logLevel = getLogLevel(line)
                   return (
-                    <div 
-                      key={index} 
-                      className={`${getLogLevelColor(level)} whitespace-pre-wrap`}
+                    <div
+                      key={index}
+                      className="flex items-start gap-2 py-0.5 hover:bg-muted/50 group"
                     >
-                      {line}
+                      <span className="text-muted-foreground text-xs min-w-[3ch] opacity-50 group-hover:opacity-100">
+                        {index + 1}
+                      </span>
+                      {logLevel && (
+                        <Badge variant={logLevel.variant} className="text-xs px-1 py-0 h-auto">
+                          {logLevel.label[0]}
+                        </Badge>
+                      )}
+                      <span className="flex-1 leading-relaxed break-all">
+                        {formatLogLine(line)}
+                      </span>
                     </div>
                   )
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

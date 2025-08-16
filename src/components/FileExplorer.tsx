@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DeviceInfo, FileInfo } from "@/types/device"
+import { type DeviceInfo, type FileInfo } from "@/tauri-commands"
+import { useDeviceFiles, useDownloadFile, useRefreshDeviceFiles } from "@/hooks/useDeviceDataQueries"
 import { 
   Folder, 
   File, 
@@ -19,35 +19,21 @@ interface FileExplorerProps {
 
 export function FileExplorer({ selectedDevice }: FileExplorerProps) {
   const [currentPath, setCurrentPath] = useState("/sdcard")
-  const [files, setFiles] = useState<FileInfo[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [pathHistory, setPathHistory] = useState<string[]>(["/sdcard"])
 
-  const loadFiles = async (path: string) => {
-    if (!selectedDevice) {
-      setFiles([])
-      return
-    }
+  // Use TanStack Query for file operations
+  const {
+    data: files = [],
+    isLoading,
+    error
+  } = useDeviceFiles(selectedDevice, currentPath)
 
-    setIsLoading(true)
-    try {
-      const fileList = await invoke<FileInfo[]>("browse_files_for_device", { 
-        deviceSerial: selectedDevice.serial_no,
-        path 
-      })
-      setFiles(fileList)
-    } catch (error) {
-      console.error("Failed to load files:", error)
-      setFiles([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const downloadFileMutation = useDownloadFile()
+  const refreshFiles = useRefreshDeviceFiles(selectedDevice, currentPath)
 
   const navigateToPath = (path: string) => {
     setCurrentPath(path)
     setPathHistory(prev => [...prev, path])
-    loadFiles(path)
   }
 
   const goBack = () => {
@@ -56,7 +42,6 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
       const previousPath = newHistory[newHistory.length - 1]
       setPathHistory(newHistory)
       setCurrentPath(previousPath)
-      loadFiles(previousPath)
     }
   }
 
@@ -64,11 +49,10 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
     try {
       // For demo purposes, download to desktop
       const localPath = `/Users/${process.env.USER}/Desktop/${file.name}`
-      await invoke("download_file", { 
+      await downloadFileMutation.mutateAsync({ 
         remotePath: file.path, 
         localPath 
       })
-      console.log(`Downloaded ${file.name} to Desktop`)
     } catch (error) {
       console.error("Failed to download file:", error)
     }
@@ -87,12 +71,6 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
     
     return `${size.toFixed(1)} ${units[unitIndex]}`
   }
-
-  useEffect(() => {
-    if (selectedDevice) {
-      loadFiles(currentPath)
-    }
-  }, [selectedDevice, currentPath])
 
   return (
     <Card className="h-full">
@@ -118,7 +96,7 @@ export function FileExplorer({ selectedDevice }: FileExplorerProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadFiles(currentPath)}
+              onClick={refreshFiles}
               disabled={isLoading}
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
