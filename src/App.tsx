@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { Header } from "@/components/Header"
 import { Sidebar } from "@/components/Sidebar"
 import { MainContent } from "@/components/MainContent"
 import { ThemeProvider } from "@/components/ThemeProvider"
@@ -10,6 +9,7 @@ import { DeviceInfo } from "@/tauri-commands"
 
 function App() {
   const [selectedDevice, setSelectedDevice] = useState<DeviceInfo>()
+  const [activeView, setActiveView] = useState('devices')
   const { devices: pairedDevices, updateLastConnected } = usePairedDevices()
   const { data: devices = [], isLoading, addDevice, refetch } = useConnectedDevices()
   const { tryAutoReconnect } = useAutoReconnect()
@@ -52,18 +52,20 @@ function App() {
     <ThemeProvider>
       <SidebarProvider>
         <Sidebar
-          devices={devices}
-          selectedDevice={selectedDevice}
-          onDeviceSelect={setSelectedDevice}
           onRefreshDevices={refreshDevices}
           onWirelessDeviceConnected={handleWirelessDeviceConnected}
           isLoading={isLoading}
+          activeView={activeView}
+          onViewChange={setActiveView}
         />
         <SidebarInset>
-          <Header selectedDevice={selectedDevice} />
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <MainContent selectedDevice={selectedDevice} />
-          </div>
+          <MainContent 
+            selectedDevice={selectedDevice}
+            activeView={activeView}
+            devices={devices}
+            onDeviceSelect={setSelectedDevice}
+            onWirelessDeviceConnected={handleWirelessDeviceConnected}
+          />
         </SidebarInset>
       </SidebarProvider>
     </ThemeProvider>
