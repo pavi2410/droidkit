@@ -11,10 +11,15 @@ export interface DeviceInfo {
   sdk_version: string;
 }
 
+export type FileType = 
+  | { type: 'File' }
+  | { type: 'Directory' }
+  | { type: 'Symlink'; target: string };
+
 export interface FileInfo {
   name: string;
-  path: string;
-  is_directory: boolean;
+  dir: string;
+  file_type: FileType;
   size?: number;
   permissions: string;
 }

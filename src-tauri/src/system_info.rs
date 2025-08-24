@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::adb_commands::Device;
+use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -81,12 +81,10 @@ pub struct NetworkInterface {
 fn execute_adb_command(device: &mut Device, command: &[&str]) -> Option<String> {
     let mut buf: Vec<u8> = Vec::new();
     match device.shell_command(command, &mut buf) {
-        Ok(_) => {
-            match from_utf8(&buf) {
-                Ok(output) => Some(output.trim().to_string()),
-                Err(_) => None,
-            }
-        }
+        Ok(_) => match from_utf8(&buf) {
+            Ok(output) => Some(output.trim().to_string()),
+            Err(_) => None,
+        },
         Err(_) => None,
     }
 }
@@ -328,7 +326,7 @@ fn get_connection_type(device: &mut Device) -> Option<String> {
             return Some("WiFi".to_string());
         }
     }
-    
+
     // Check for mobile data connection
     if let Some(telephony) = execute_adb_command(device, &["dumpsys", "telephony.registry"]) {
         if telephony.contains("mDataConnectionState=2") || telephony.contains("CONNECTED") {
@@ -345,18 +343,20 @@ fn get_connection_type(device: &mut Device) -> Option<String> {
             return Some("Mobile Data".to_string());
         }
     }
-    
+
     // Check for ethernet connection
     if let Some(interfaces) = get_network_interfaces(device) {
         for interface in interfaces {
-            if interface.name.contains("eth") && interface.status.as_ref().map_or(false, |s| s == "UP") {
+            if interface.name.contains("eth")
+                && interface.status.as_ref().map_or(false, |s| s == "UP")
+            {
                 if interface.ip_address.is_some() {
                     return Some("Ethernet".to_string());
                 }
             }
         }
     }
-    
+
     Some("Unknown".to_string())
 }
 
@@ -369,7 +369,13 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
                     if let Some(rssi_str) = rssi_part.split(' ').next() {
                         if let Ok(rssi) = rssi_str.parse::<i32>() {
                             // Convert RSSI to percentage (rough approximation)
-                            let percentage = if rssi <= -100 { 0 } else if rssi >= -50 { 100 } else { ((rssi + 100) * 2) };
+                            let percentage = if rssi <= -100 {
+                                0
+                            } else if rssi >= -50 {
+                                100
+                            } else {
+                                (rssi + 100) * 2
+                            };
                             return Some(percentage);
                         }
                     }
@@ -377,7 +383,7 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
             }
         }
     }
-    
+
     // Try WiFi signal strength as fallback
     if let Some(output) = execute_adb_command(device, &["dumpsys", "wifi"]) {
         for line in output.lines() {
@@ -386,7 +392,13 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
                     if let Some(rssi_str) = rssi_part.split(' ').next() {
                         if let Ok(rssi) = rssi_str.parse::<i32>() {
                             // Convert WiFi RSSI to percentage
-                            let percentage = if rssi <= -100 { 0 } else if rssi >= -50 { 100 } else { ((rssi + 100) * 2) };
+                            let percentage = if rssi <= -100 {
+                                0
+                            } else if rssi >= -50 {
+                                100
+                            } else {
+                                (rssi + 100) * 2
+                            };
                             return Some(percentage);
                         }
                     }
@@ -394,7 +406,7 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
             }
         }
     }
-    
+
     None
 }
 
@@ -422,16 +434,16 @@ fn get_network_speed(device: &mut Device, speed_type: &str) -> Option<String> {
             }
         }
     }
-    
+
     // Try to get speed info from system properties or network stats
     if speed_type == "download" {
         // Check for download speed indicators
-        if let Some(stats) = execute_adb_command(device, &["cat", "/proc/net/dev"]) {
+        if let Some(_stats) = execute_adb_command(device, &["cat", "/proc/net/dev"]) {
             // This is a placeholder - actual implementation would parse network statistics
             return Some("Estimating...".to_string());
         }
     }
-    
+
     None
 }
 
@@ -442,19 +454,33 @@ fn get_network_interfaces(device: &mut Device) -> Option<Vec<NetworkInterface>> 
 
         for line in output.lines() {
             let line = line.trim();
-            
-            if line.contains(": ") && (line.contains("wlan") || line.contains("eth") || line.contains("lo") || line.contains("rmnet") || line.contains("ccmni")) {
+
+            if line.contains(": ")
+                && (line.contains("wlan")
+                    || line.contains("eth")
+                    || line.contains("lo")
+                    || line.contains("rmnet")
+                    || line.contains("ccmni"))
+            {
                 if let Some(interface) = current_interface.take() {
                     interfaces.push(interface);
                 }
-                
+
                 if let Some(name_part) = line.split(": ").nth(1) {
-                    let name = name_part.split_whitespace().next().unwrap_or("unknown").to_string();
+                    let name = name_part
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("unknown")
+                        .to_string();
                     current_interface = Some(NetworkInterface {
                         name,
                         ip_address: None,
                         mac_address: None,
-                        status: if line.contains("UP") { Some("UP".to_string()) } else { Some("DOWN".to_string()) },
+                        status: if line.contains("UP") {
+                            Some("UP".to_string())
+                        } else {
+                            Some("DOWN".to_string())
+                        },
                     });
                 }
             } else if let Some(ref mut interface) = current_interface {

@@ -1,4 +1,4 @@
-import { FileExplorer } from "@/components/FileExplorer"
+import { FileExplorer } from "@/components/views/FileExplorer"
 import { AppManager } from "@/components/views/AppManager"
 import { LogcatViewer } from "@/components/LogcatViewer"
 import { DeviceList } from "@/components/DeviceList"
