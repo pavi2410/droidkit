@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, Channel } from '@tauri-apps/api/core';
 
 // Type definitions based on Rust structs
 export type DeviceTransport = 'USB' | 'TCP';
@@ -116,8 +116,22 @@ export const getLogcat = (lines: number): Promise<string> =>
 /**
  * Get logcat output from a specific device
  */
-export const getLogcatForDevice = (deviceSerial: string, lines: number, logLevel?: string): Promise<string> => 
-  invoke('get_logcat_for_device', { deviceSerial, lines, logLevel });
+export const getLogcatForDevice = (
+  deviceSerial: string, 
+  lines: number, 
+  logLevel: string | undefined,
+  onLogReceived: (result: { Ok?: string; Err?: string }) => void
+): void => {
+  const channel = new Channel<{ Ok?: string; Err?: string }>();
+  channel.onmessage = onLogReceived;
+  
+  invoke('get_logcat_for_device', { 
+    deviceSerial, 
+    lines, 
+    logLevel, 
+    onEvent: channel 
+  });
+};
 
 /**
  * Connect to a wireless device using IP and port

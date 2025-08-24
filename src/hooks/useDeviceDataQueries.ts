@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useCallback, useEffect } from 'react'
 import type { DeviceInfo } from '@/tauri-commands'
 import {
   browseFilesForDevice,
@@ -52,15 +53,51 @@ export function useDeviceApps(device: DeviceInfo | undefined) {
   })
 }
 
-// Logcat Queries
-export function useDeviceLogs(device: DeviceInfo | undefined, lines: number = 100, enabled: boolean = true, logLevel?: string) {
-  return useQuery({
-    queryKey: [...logKeys.device(device?.serial_no || ''), lines, logLevel],
-    queryFn: () => getLogcatForDevice(device!.serial_no, lines, logLevel),
-    enabled: !!device && enabled,
-    refetchInterval: 2000, // Refresh logs every 2 seconds when active
-    staleTime: 0, // Logs should always be fresh
-  })
+// Logcat Hook using Channels
+export function useDeviceLogs(
+  device: DeviceInfo | undefined, 
+  lines: number = 100, 
+  enabled: boolean = true, 
+  logLevel?: string
+) {
+  const [logs, setLogs] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const refetch = useCallback(() => {
+    if (!device || !enabled) return
+
+    setIsLoading(true)
+    setError(null)
+
+    getLogcatForDevice(
+      device.serial_no, 
+      lines, 
+      logLevel,
+      (result: { Ok?: string; Err?: string }) => {
+        if (result.Ok) {
+          setLogs(result.Ok)
+          setError(null)
+        } else if (result.Err) {
+          setError(new Error(result.Err))
+        }
+        setIsLoading(false)
+      }
+    )
+  }, [device, lines, logLevel, enabled])
+
+  useEffect(() => {
+    if (enabled && device) {
+      refetch()
+    }
+  }, [refetch, enabled, device])
+
+  return {
+    data: logs,
+    isLoading,
+    error,
+    refetch,
+  }
 }
 
 // File Operations Mutations

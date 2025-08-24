@@ -76,17 +76,40 @@ fn get_apps_for_device(device_serial: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-fn get_logcat(lines: u32) -> Result<String, String> {
-    get_connected_device()
-        .ok_or_else(|| "No device connected".to_string())
-        .and_then(|mut device| get_logcat_output(&mut device, lines, None))
+fn get_logcat(lines: u32, on_event: tauri::ipc::Channel<Result<String, String>>) {
+    match get_connected_device() {
+        Some(mut device) => {
+            // Run logcat in a separate thread to avoid blocking
+            std::thread::spawn(move || {
+                let result = get_logcat_output(&mut device, lines, None);
+                let _ = on_event.send(result);
+            });
+        }
+        None => {
+            let _ = on_event.send(Err("No device connected".to_string()));
+        }
+    }
 }
 
 #[tauri::command]
-fn get_logcat_for_device(device_serial: String, lines: u32, log_level: Option<String>) -> Result<String, String> {
-    reconnect_device(&device_serial)
-        .ok_or_else(|| "Failed to connect to device".to_string())
-        .and_then(|mut device| get_logcat_output(&mut device, lines, log_level))
+fn get_logcat_for_device(
+    device_serial: String,
+    lines: u32,
+    log_level: Option<String>,
+    on_event: tauri::ipc::Channel<Result<String, String>>,
+) {
+    match reconnect_device(&device_serial) {
+        Some(mut device) => {
+            // Run logcat in a separate thread to avoid blocking
+            std::thread::spawn(move || {
+                let result = get_logcat_output(&mut device, lines, log_level);
+                let _ = on_event.send(result);
+            });
+        }
+        None => {
+            let _ = on_event.send(Err("Failed to connect to device".to_string()));
+        }
+    }
 }
 
 #[tauri::command]
