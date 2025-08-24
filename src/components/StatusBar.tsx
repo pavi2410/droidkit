@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { DeviceInfo } from "@/tauri-commands"
+import { useDeviceBatteryInfo } from "@/hooks/useSystemInfo"
 import { 
   Wifi, 
   Usb, 
@@ -10,7 +11,8 @@ import {
   Activity,
   CheckCircle,
   AlertCircle,
-  PanelLeft
+  PanelLeft,
+  Battery
 } from "lucide-react"
 
 interface StatusBarProps {
@@ -28,6 +30,9 @@ interface Operation {
 }
 
 export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: StatusBarProps) {
+  // Get battery info for the selected device
+  const { data: batteryInfo } = useDeviceBatteryInfo(selectedDevice)
+  
   // Simulate some operations for demo
   const activeOperations: Operation[] = [
     {
@@ -119,6 +124,19 @@ export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: Status
       <div className="flex items-center gap-2 text-muted-foreground flex-shrink-0">
         {selectedDevice && (
           <>
+            {/* Battery Level */}
+            {batteryInfo && batteryInfo.level !== undefined && (
+              <div className="flex items-center gap-1">
+                <Battery 
+                  className={`h-3.5 w-3.5 ${
+                    batteryInfo.level <= 20 ? 'text-red-500' : 
+                    batteryInfo.level <= 50 ? 'text-yellow-500' : 
+                    'text-green-500'
+                  }`} 
+                />
+                <span className="text-xs">{batteryInfo.level}%</span>
+              </div>
+            )}
             <span className="hidden sm:inline">Android {selectedDevice.android_version}</span>
             <span className="sm:hidden">API {selectedDevice.sdk_version}</span>
             <span className="hidden md:inline">API {selectedDevice.sdk_version}</span>
