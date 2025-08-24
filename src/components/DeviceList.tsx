@@ -7,6 +7,7 @@ import { useUSBDevices, useWirelessDevices, useConnectToDevice } from "@/hooks/u
 import { usePairedDevices } from "@/hooks/usePairedDevices"
 import { useAppSettings } from "@/hooks/useAppSettings"
 import { useAvdList, useLaunchAvd } from "@/hooks/useEmulators"
+import { useDeviceBatteryInfo } from "@/hooks/useSystemInfo"
 import { 
   Smartphone, 
   Play, 
@@ -52,6 +53,11 @@ function UnifiedDeviceItem({ device, selectedDevice, onDeviceSelect, onDevicePai
   const { launchAvd, isLaunchingAvd } = useLaunchAvd()
   const { updateLastConnected } = usePairedDevices()
   const [isConnecting, setIsConnecting] = useState(false)
+  
+  // Fetch battery info for connected devices
+  const { data: batteryInfo } = useDeviceBatteryInfo(
+    device.type === 'connected' ? device.data : undefined
+  )
 
   const handleClick = () => {
     if (device.type === 'connected') {
@@ -103,8 +109,8 @@ function UnifiedDeviceItem({ device, selectedDevice, onDeviceSelect, onDevicePai
   }
 
   const getBatteryLevel = () => {
-    // Simulate battery level (in real app, this would come from device)
-    return device.type === 'connected' ? Math.floor(Math.random() * 100) : null
+    // Return real battery level for connected devices
+    return device.type === 'connected' && batteryInfo ? batteryInfo.level : null
   }
 
   const renderConnectionStrength = () => {
