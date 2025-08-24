@@ -29,7 +29,7 @@ export function SystemInfo({ selectedDevice }: SystemInfoProps) {
         </p>
       </div>
 
-      <ScrollArea className="flex-[1_1_0]">
+      <ScrollArea className="flex-1 h-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
           <DeviceInfoCard selectedDevice={selectedDevice} />
           <HardwareInfoCard selectedDevice={selectedDevice} />
