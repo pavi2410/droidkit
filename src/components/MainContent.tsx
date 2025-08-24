@@ -1,5 +1,5 @@
 import { FileExplorer } from "@/components/FileExplorer"
-import { AppManager } from "@/components/AppManager"
+import { AppManager } from "@/components/views/AppManager"
 import { LogcatViewer } from "@/components/LogcatViewer"
 import { DeviceList } from "@/components/DeviceList"
 import { SystemInfo } from "@/components/views/system-info"
@@ -17,14 +17,14 @@ interface MainContentProps {
   onWirelessDeviceConnected: (device: DeviceInfo) => void
 }
 
-export function MainContent({ 
-  selectedDevice, 
-  activeView, 
-  devices, 
-  onDeviceSelect, 
-  onWirelessDeviceConnected 
+export function MainContent({
+  selectedDevice,
+  activeView,
+  devices,
+  onDeviceSelect,
+  onWirelessDeviceConnected
 }: MainContentProps) {
-  
+
   // Devices view is always available
   if (activeView === 'devices') {
     return (
@@ -78,9 +78,7 @@ export function MainContent({
 
   return (
     <main className="flex-1 p-4 border-t border-l rounded-tl-xl">
-      <div className="h-full">
-        {renderView()}
-      </div>
+      {renderView()}
     </main>
   )
 }

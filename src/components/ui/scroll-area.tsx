@@ -11,7 +11,7 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      className={cn("relative flex-[1_1_0]", className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
