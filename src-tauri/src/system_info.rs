@@ -61,6 +61,10 @@ pub struct BuildInfo {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetworkInfo {
     pub wifi_status: Option<String>,
+    pub connection_type: Option<String>,
+    pub signal_strength: Option<i32>,
+    pub upload_speed: Option<String>,
+    pub download_speed: Option<String>,
     pub ip_addresses: Vec<String>,
     pub mac_addresses: Vec<String>,
     pub network_interfaces: Vec<NetworkInterface>,
@@ -278,6 +282,10 @@ pub fn get_build_info(device: &mut Device) -> BuildInfo {
 pub fn get_network_info(device: &mut Device) -> NetworkInfo {
     let mut network_info = NetworkInfo {
         wifi_status: get_wifi_status(device),
+        connection_type: get_connection_type(device),
+        signal_strength: get_signal_strength(device),
+        upload_speed: get_network_speed(device, "upload"),
+        download_speed: get_network_speed(device, "download"),
         ip_addresses: Vec::new(),
         mac_addresses: Vec::new(),
         network_interfaces: Vec::new(),
@@ -313,6 +321,120 @@ fn get_wifi_status(device: &mut Device) -> Option<String> {
     None
 }
 
+fn get_connection_type(device: &mut Device) -> Option<String> {
+    // Check for WiFi connection first
+    if let Some(wifi_info) = execute_adb_command(device, &["dumpsys", "wifi"]) {
+        if wifi_info.contains("mWifiInfo") && wifi_info.contains("state: COMPLETED") {
+            return Some("WiFi".to_string());
+        }
+    }
+    
+    // Check for mobile data connection
+    if let Some(telephony) = execute_adb_command(device, &["dumpsys", "telephony.registry"]) {
+        if telephony.contains("mDataConnectionState=2") || telephony.contains("CONNECTED") {
+            // Try to determine mobile data type
+            if let Some(network_type) = get_property(device, "gsm.network.type") {
+                match network_type.as_str() {
+                    "LTE" | "LTEA" => return Some("4G LTE".to_string()),
+                    "UMTS" | "HSDPA" | "HSUPA" | "HSPA" => return Some("3G".to_string()),
+                    "EDGE" | "GPRS" => return Some("2G".to_string()),
+                    "NR" => return Some("5G".to_string()),
+                    _ => return Some("Mobile Data".to_string()),
+                }
+            }
+            return Some("Mobile Data".to_string());
+        }
+    }
+    
+    // Check for ethernet connection
+    if let Some(interfaces) = get_network_interfaces(device) {
+        for interface in interfaces {
+            if interface.name.contains("eth") && interface.status.as_ref().map_or(false, |s| s == "UP") {
+                if interface.ip_address.is_some() {
+                    return Some("Ethernet".to_string());
+                }
+            }
+        }
+    }
+    
+    Some("Unknown".to_string())
+}
+
+fn get_signal_strength(device: &mut Device) -> Option<i32> {
+    if let Some(output) = execute_adb_command(device, &["dumpsys", "telephony.registry"]) {
+        for line in output.lines() {
+            if line.contains("mSignalStrength") {
+                // Parse signal strength - this is a simplified approach
+                if let Some(rssi_part) = line.split("rssi=").nth(1) {
+                    if let Some(rssi_str) = rssi_part.split(' ').next() {
+                        if let Ok(rssi) = rssi_str.parse::<i32>() {
+                            // Convert RSSI to percentage (rough approximation)
+                            let percentage = if rssi <= -100 { 0 } else if rssi >= -50 { 100 } else { ((rssi + 100) * 2) };
+                            return Some(percentage);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Try WiFi signal strength as fallback
+    if let Some(output) = execute_adb_command(device, &["dumpsys", "wifi"]) {
+        for line in output.lines() {
+            if line.contains("rssi: ") {
+                if let Some(rssi_part) = line.split("rssi: ").nth(1) {
+                    if let Some(rssi_str) = rssi_part.split(' ').next() {
+                        if let Ok(rssi) = rssi_str.parse::<i32>() {
+                            // Convert WiFi RSSI to percentage
+                            let percentage = if rssi <= -100 { 0 } else if rssi >= -50 { 100 } else { ((rssi + 100) * 2) };
+                            return Some(percentage);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    None
+}
+
+fn get_network_speed(device: &mut Device, speed_type: &str) -> Option<String> {
+    // Simple connectivity test using ping
+    if let Some(ping_output) = execute_adb_command(device, &["ping", "-c", "3", "8.8.8.8"]) {
+        // Parse ping results for basic connectivity info
+        for line in ping_output.lines() {
+            if line.contains("avg") {
+                if let Some(time_part) = line.split("avg = ").nth(1) {
+                    if let Some(avg_time) = time_part.split('/').next() {
+                        if let Ok(ms) = avg_time.parse::<f32>() {
+                            // Rough estimate based on ping time
+                            let estimated_speed = if ms < 50.0 {
+                                "Good (>10 Mbps)"
+                            } else if ms < 100.0 {
+                                "Fair (1-10 Mbps)"
+                            } else {
+                                "Slow (<1 Mbps)"
+                            };
+                            return Some(estimated_speed.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Try to get speed info from system properties or network stats
+    if speed_type == "download" {
+        // Check for download speed indicators
+        if let Some(stats) = execute_adb_command(device, &["cat", "/proc/net/dev"]) {
+            // This is a placeholder - actual implementation would parse network statistics
+            return Some("Estimating...".to_string());
+        }
+    }
+    
+    None
+}
+
 fn get_network_interfaces(device: &mut Device) -> Option<Vec<NetworkInterface>> {
     if let Some(output) = execute_adb_command(device, &["ip", "addr", "show"]) {
         let mut interfaces = Vec::new();
@@ -321,7 +443,7 @@ fn get_network_interfaces(device: &mut Device) -> Option<Vec<NetworkInterface>> 
         for line in output.lines() {
             let line = line.trim();
             
-            if line.contains(": ") && (line.contains("wlan") || line.contains("eth") || line.contains("lo")) {
+            if line.contains(": ") && (line.contains("wlan") || line.contains("eth") || line.contains("lo") || line.contains("rmnet") || line.contains("ccmni")) {
                 if let Some(interface) = current_interface.take() {
                     interfaces.push(interface);
                 }

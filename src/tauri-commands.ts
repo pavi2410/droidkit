@@ -216,6 +216,10 @@ export interface BuildInfo {
 
 export interface NetworkInfo {
   wifi_status?: string;
+  connection_type?: string;
+  signal_strength?: number;
+  upload_speed?: string;
+  download_speed?: string;
   ip_addresses: string[];
   mac_addresses: string[];
   network_interfaces: NetworkInterface[];
