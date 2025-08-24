@@ -1,6 +1,6 @@
 import { FileExplorer } from "@/components/views/FileExplorer"
 import { AppManager } from "@/components/views/AppManager"
-import { LogcatViewer } from "@/components/LogcatViewer"
+import { LogcatViewer } from "@/components/views/LogcatViewer"
 import { DeviceList } from "@/components/DeviceList"
 import { SystemInfo } from "@/components/views/system-info"
 import { ScreenControl } from "@/components/views/ScreenControl"

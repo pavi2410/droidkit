@@ -116,8 +116,8 @@ export const getLogcat = (lines: number): Promise<string> =>
 /**
  * Get logcat output from a specific device
  */
-export const getLogcatForDevice = (deviceSerial: string, lines: number): Promise<string> => 
-  invoke('get_logcat_for_device', { deviceSerial, lines });
+export const getLogcatForDevice = (deviceSerial: string, lines: number, logLevel?: string): Promise<string> => 
+  invoke('get_logcat_for_device', { deviceSerial, lines, logLevel });
 
 /**
  * Connect to a wireless device using IP and port

@@ -53,10 +53,10 @@ export function useDeviceApps(device: DeviceInfo | undefined) {
 }
 
 // Logcat Queries
-export function useDeviceLogs(device: DeviceInfo | undefined, lines: number = 100, enabled: boolean = true) {
+export function useDeviceLogs(device: DeviceInfo | undefined, lines: number = 100, enabled: boolean = true, logLevel?: string) {
   return useQuery({
-    queryKey: logKeys.device(device?.serial_no || ''),
-    queryFn: () => getLogcatForDevice(device!.serial_no, lines),
+    queryKey: [...logKeys.device(device?.serial_no || ''), lines, logLevel],
+    queryFn: () => getLogcatForDevice(device!.serial_no, lines, logLevel),
     enabled: !!device && enabled,
     refetchInterval: 2000, // Refresh logs every 2 seconds when active
     staleTime: 0, // Logs should always be fresh

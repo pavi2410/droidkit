@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { type DeviceInfo } from "@/tauri-commands"
 import { useDeviceLogs } from "@/hooks/useDeviceDataQueries"
 import { 
@@ -12,7 +19,8 @@ import {
   Pause,
   RefreshCw,
   Download,
-  Trash2
+  Trash2,
+  Filter
 } from "lucide-react"
 
 interface LogcatViewerProps {
@@ -23,6 +31,7 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [lineCount, setLineCount] = useState(100)
   const [isAutoRefresh, setIsAutoRefresh] = useState(true)
+  const [logLevel, setLogLevel] = useState<string>("all")
 
   // Use TanStack Query for log operations
   const {
@@ -30,7 +39,7 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
     isLoading,
     error,
     refetch
-  } = useDeviceLogs(selectedDevice, lineCount, isAutoRefresh)
+  } = useDeviceLogs(selectedDevice, lineCount, isAutoRefresh, logLevel === "all" ? undefined : logLevel)
 
   // Parse and filter logs
   const filteredLogs = useMemo(() => {
@@ -135,6 +144,23 @@ export function LogcatViewer({ selectedDevice }: LogcatViewerProps) {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+            <div className="flex items-center gap-2 min-w-fit">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={logLevel} onValueChange={setLogLevel}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="All levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All levels</SelectItem>
+                  <SelectItem value="V">Verbose</SelectItem>
+                  <SelectItem value="D">Debug</SelectItem>
+                  <SelectItem value="I">Info</SelectItem>
+                  <SelectItem value="W">Warning</SelectItem>
+                  <SelectItem value="E">Error</SelectItem>
+                  <SelectItem value="F">Fatal</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2 min-w-fit">
               <span className="text-sm text-muted-foreground">Lines:</span>

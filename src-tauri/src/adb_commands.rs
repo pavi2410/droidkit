@@ -557,10 +557,20 @@ pub(crate) fn get_installed_packages(device: &mut Device) -> Result<Vec<String>,
     }
 }
 
-pub(crate) fn get_logcat_output(device: &mut Device, lines: u32) -> Result<String, String> {
+pub(crate) fn get_logcat_output(device: &mut Device, lines: u32, log_level: Option<String>) -> Result<String, String> {
     let mut buf: Vec<u8> = Vec::new();
+    
+    let lines_str = lines.to_string();
+    let mut args = vec!["logcat", "-d", "-t", lines_str.as_str()];
+    
+    // Add log level filter if specified
+    let filter_arg;
+    if let Some(level) = log_level.as_ref() {
+        filter_arg = format!("*:{}", level);
+        args.push(filter_arg.as_str());
+    }
 
-    let result = device.shell_command(&["logcat", "-d", "-t", &lines.to_string()], &mut buf);
+    let result = device.shell_command(&args, &mut buf);
 
     match result {
         Ok(_) => {

@@ -79,14 +79,14 @@ fn get_apps_for_device(device_serial: String) -> Result<Vec<String>, String> {
 fn get_logcat(lines: u32) -> Result<String, String> {
     get_connected_device()
         .ok_or_else(|| "No device connected".to_string())
-        .and_then(|mut device| get_logcat_output(&mut device, lines))
+        .and_then(|mut device| get_logcat_output(&mut device, lines, None))
 }
 
 #[tauri::command]
-fn get_logcat_for_device(device_serial: String, lines: u32) -> Result<String, String> {
+fn get_logcat_for_device(device_serial: String, lines: u32, log_level: Option<String>) -> Result<String, String> {
     reconnect_device(&device_serial)
         .ok_or_else(|| "Failed to connect to device".to_string())
-        .and_then(|mut device| get_logcat_output(&mut device, lines))
+        .and_then(|mut device| get_logcat_output(&mut device, lines, log_level))
 }
 
 #[tauri::command]
