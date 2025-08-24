@@ -11,7 +11,7 @@ import {
   SidebarFooter
 } from "@/components/ui/sidebar"
 import { WirelessConnectionDialog } from "@/components/WirelessConnectionDialog"
-import { SettingsDialog } from "@/components/SettingsDialog"
+import { SettingsDialog } from "@/components/views/settings"
 import { useRefreshDevices } from "@/hooks/useDeviceQueries"
 import { type DeviceInfo } from "@/tauri-commands"
 import { 
