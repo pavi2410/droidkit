@@ -125,3 +125,12 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
 }
+
+html,
+html.div {
+  cursor: default;
+}
+
+a {
+  cursor: pointer;
+}
