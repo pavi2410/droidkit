@@ -56,7 +56,7 @@ export function AppSidebar({
   const { refreshAll } = useRefreshDevices()
 
   return (
-    <Sidebar variant="inset" className="h-[calc(100svh-var(--statusbar-height))]">
+    <Sidebar variant="inset" className="h-[calc(100svh-var(--statusbar-height))] p-0 pt-8">
       <SidebarHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
