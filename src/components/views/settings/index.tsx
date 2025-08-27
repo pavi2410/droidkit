@@ -94,12 +94,12 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="overflow-hidden p-0 size-full md:max-h-[600px] md:max-w-[900px] lg:max-w-[1000px]">
+      <DialogContent className="overflow-hidden p-0 size-full md:max-h-[600px] md:max-w-[900px] lg:max-w-[1000px] backdrop-blur-2xl">
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Customize your DroidKit settings here.
         </DialogDescription>
-        <SidebarProvider className="items-start min-h-0">
+        <SidebarProvider className="items-start min-h-0 divide-x">
           <Sidebar collapsible="none" className="hidden md:flex max-lg:pt-8">
             <SidebarContent>
               <SidebarGroup>

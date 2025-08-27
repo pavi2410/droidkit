@@ -26,6 +26,7 @@ tokio = { version = "1.42.0", features = ["rt"] }
 adb_client = "2.1.16"
 tauri-plugin-store = "2"
 tauri-plugin-decorum = "1.1.1"
+window-vibrancy = "0.6.0"
 
 [profile.release]
 panic = "abort" # Strip expensive panic clean-up logic

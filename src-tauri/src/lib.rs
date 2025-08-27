@@ -1,5 +1,6 @@
 use tauri::Manager;
 use tauri_plugin_decorum::WebviewWindowExt;
+use window_vibrancy::{apply_blur, apply_vibrancy, NSVisualEffectMaterial};
 
 use crate::adb_commands::{
     DeviceInfo, DiscoveredDevice, DiscoveredWirelessDevice, FileInfo, PairingData,
@@ -278,13 +279,15 @@ pub fn run() {
 
 				// Make window transparent without privateApi
 				main_window.make_transparent().unwrap();
-
-				// // Set window level
-				// // NSWindowLevel: https://developer.apple.com/documentation/appkit/nswindowlevel
-				// main_window.set_window_level(25).unwrap();
-
-                ()
 			}
+
+            #[cfg(target_os = "macos")]
+            apply_vibrancy(&main_window, NSVisualEffectMaterial::HudWindow, None, None)
+                .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
+
+            #[cfg(target_os = "windows")]
+            apply_blur(&main_window, Some((18, 18, 18, 125)))
+                .expect("Unsupported platform! 'apply_blur' is only supported on Windows");
 
 			Ok(())
 		})

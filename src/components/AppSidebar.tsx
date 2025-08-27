@@ -98,6 +98,7 @@ export function AppSidebar({
               return (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
+                    className="data-[active=true]:outline-solid hover:outline-solid outline-1 outline-sidebar-border/70"
                     isActive={activeView === item.id}
                     onClick={() => onViewChange(item.id)}
                   >
