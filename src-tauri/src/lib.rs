@@ -1,6 +1,6 @@
-use tauri::Manager;
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_decorum::WebviewWindowExt;
-use window_vibrancy::{apply_blur, apply_vibrancy, NSVisualEffectMaterial};
+use window_vibrancy::{NSVisualEffectMaterial, apply_blur, apply_vibrancy};
 
 use crate::adb_commands::{
     DeviceInfo, DiscoveredDevice, DiscoveredWirelessDevice, FileInfo, PairingData,
@@ -259,6 +259,37 @@ async fn get_device_network_info_cmd(device_serial: String) -> Result<NetworkInf
     .map_err(|e| format!("Task execution failed: {}", e))?
 }
 
+#[tauri::command]
+async fn open_settings_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Check if settings window already exists
+    if let Some(window) = app_handle.get_webview_window("settings") {
+        // Window exists, just show it
+        window.show().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // Create new settings window
+    let window =
+        WebviewWindowBuilder::new(&app_handle, "settings", WebviewUrl::App("/settings".into()))
+            .title("Settings")
+            .inner_size(800.0, 600.0)
+            .hidden_title(true)
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .build()
+            .map_err(|e| e.to_string())?;
+
+    window.create_overlay_titlebar().unwrap();
+
+    // Some macOS-specific helpers
+    #[cfg(target_os = "macos")]
+    {
+        // Set a custom inset to the traffic lights
+        window.set_traffic_lights_inset(12.0, 16.0).unwrap();
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -266,20 +297,21 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-			// Create a custom titlebar for main window
-			// On Windows this hides decoration and creates custom window controls
-			// On macOS it needs hiddenTitle: true and titleBarStyle: overlay
-			let main_window = app.get_webview_window("main").unwrap();
-			main_window.create_overlay_titlebar().unwrap();
+            // Create a custom titlebar for main window
+            // On Windows this hides decoration and creates custom window controls
+            // On macOS it needs hiddenTitle: true and titleBarStyle: overlay
+            let main_window = app.get_webview_window("main").unwrap();
+            main_window.create_overlay_titlebar().unwrap();
 
-			// Some macOS-specific helpers
-			#[cfg(target_os = "macos")] {
-				// Set a custom inset to the traffic lights
-				main_window.set_traffic_lights_inset(12.0, 16.0).unwrap();
+            // Some macOS-specific helpers
+            #[cfg(target_os = "macos")]
+            {
+                // Set a custom inset to the traffic lights
+                main_window.set_traffic_lights_inset(12.0, 16.0).unwrap();
 
-				// Make window transparent without privateApi
-				main_window.make_transparent().unwrap();
-			}
+                // Make window transparent without privateApi
+                main_window.make_transparent().unwrap();
+            }
 
             #[cfg(target_os = "macos")]
             apply_vibrancy(&main_window, NSVisualEffectMaterial::HudWindow, None, None)
@@ -289,8 +321,8 @@ pub fn run() {
             apply_blur(&main_window, Some((18, 18, 18, 125)))
                 .expect("Unsupported platform! 'apply_blur' is only supported on Windows");
 
-			Ok(())
-		})
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             device_info,
             get_android_sdk_path,
@@ -315,7 +347,8 @@ pub fn run() {
             get_device_display_info_cmd,
             get_device_battery_info_cmd,
             get_device_build_info_cmd,
-            get_device_network_info_cmd
+            get_device_network_info_cmd,
+            open_settings_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { 
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -11,10 +11,9 @@ import {
   SidebarFooter
 } from "@/components/ui/sidebar"
 import { WirelessConnectionDialog } from "@/components/WirelessConnectionDialog"
-import { SettingsDialog } from "@/components/views/settings"
 import { useRefreshDevices } from "@/hooks/useDeviceQueries"
 import { type DeviceInfo } from "@/tauri-commands"
-import { 
+import {
   Smartphone,
   RefreshCw,
   Plus,
@@ -26,6 +25,7 @@ import {
   Activity,
   Settings
 } from "lucide-react"
+import { useSettingsWindow } from "@/hooks/use-window"
 
 interface SidebarProps {
   onRefreshDevices: () => void
@@ -46,7 +46,7 @@ const navigationItems = [
   { id: 'shell', label: 'Shell', icon: Terminal }
 ]
 
-export function AppSidebar({ 
+export function AppSidebar({
   onRefreshDevices,
   onWirelessDeviceConnected,
   isLoading = false,
@@ -54,15 +54,16 @@ export function AppSidebar({
   onViewChange
 }: SidebarProps) {
   const { refreshAll } = useRefreshDevices()
+  const { isOpened, open, close } = useSettingsWindow();
 
   return (
     <Sidebar variant="inset" className="h-[calc(100svh-var(--statusbar-height))] p-0 pt-8">
       <SidebarHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img 
-              src="/droidkit-icon-128.png" 
-              alt="DroidKit" 
+            <img
+              src="/droidkit-icon-128.png"
+              alt="DroidKit"
               className="size-8"
             />
             <h2 className="text-lg font-semibold">DroidKit</h2>
@@ -73,9 +74,9 @@ export function AppSidebar({
                 <Plus className="h-4 w-4" />
               </Button>
             </WirelessConnectionDialog>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 onRefreshDevices()
                 refreshAll()
@@ -111,16 +112,16 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SettingsDialog>
-              <SidebarMenuButton>
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </SidebarMenuButton>
-            </SettingsDialog>
+            <SidebarMenuButton
+              onClick={isOpened ? close : open}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

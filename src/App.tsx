@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/AppSidebar"
 import { MainContent } from "@/components/MainContent"
 import { StatusBar } from "@/components/StatusBar"
-import { ThemeProvider } from "@/components/ThemeProvider"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { usePairedDevices } from "@/hooks/usePairedDevices"
 import { useConnectedDevices, useAutoReconnect } from "@/hooks/useDeviceQueries"
@@ -22,7 +21,7 @@ function App() {
 
   const handleWirelessDeviceConnected = (device: DeviceInfo) => {
     addDevice(device)
-    
+
     // Auto-select the newly connected device if no device is currently selected
     if (!selectedDevice) {
       setSelectedDevice(device)
@@ -43,7 +42,7 @@ function App() {
         setSelectedDevice(reconnectedDevice)
       }
     }
-    
+
     // Only run auto-reconnect when paired devices are loaded
     if (pairedDevices.length > 0) {
       initializeApp()
@@ -51,35 +50,33 @@ function App() {
   }, [pairedDevices]) // Removed getCategory dependency since useConnectedDevices handles polling
 
   return (
-    <ThemeProvider>
-      <div className="flex flex-col h-screen [--statusbar-height:calc(--spacing(8))]">
-        <div className="flex-1 overflow-hidden">
-          <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <AppSidebar
-              onRefreshDevices={refreshDevices}
-              onWirelessDeviceConnected={handleWirelessDeviceConnected}
-              isLoading={isLoading}
+    <div className="flex flex-col h-screen [--statusbar-height:calc(--spacing(8))]">
+      <div className="flex-1 overflow-hidden">
+        <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <AppSidebar
+            onRefreshDevices={refreshDevices}
+            onWirelessDeviceConnected={handleWirelessDeviceConnected}
+            isLoading={isLoading}
+            activeView={activeView}
+            onViewChange={setActiveView}
+          />
+          <SidebarInset className="mr-0! mb-0! rounded-tr-none!">
+            <MainContent
+              selectedDevice={selectedDevice}
               activeView={activeView}
-              onViewChange={setActiveView}
+              devices={devices}
+              onDeviceSelect={setSelectedDevice}
+              onWirelessDeviceConnected={handleWirelessDeviceConnected}
             />
-            <SidebarInset className="mr-0! mb-0! rounded-tr-none!">
-              <MainContent 
-                selectedDevice={selectedDevice}
-                activeView={activeView}
-                devices={devices}
-                onDeviceSelect={setSelectedDevice}
-                onWirelessDeviceConnected={handleWirelessDeviceConnected}
-              />
-            </SidebarInset>
-          </SidebarProvider>
-        </div>
-        <StatusBar 
-          selectedDevice={selectedDevice} 
-          isLoading={isLoading}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        />
+          </SidebarInset>
+        </SidebarProvider>
       </div>
-    </ThemeProvider>
+      <StatusBar
+        selectedDevice={selectedDevice}
+        isLoading={isLoading}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+      />
+    </div>
   )
 }
 

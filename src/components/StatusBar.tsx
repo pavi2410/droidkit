@@ -3,11 +3,11 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { DeviceInfo } from "@/tauri-commands"
 import { useDeviceBatteryInfo } from "@/hooks/useSystemInfo"
-import { 
-  Wifi, 
-  Usb, 
-  Download, 
-  Upload, 
+import {
+  Wifi,
+  Usb,
+  Download,
+  Upload,
   Activity,
   CheckCircle,
   AlertCircle,
@@ -32,7 +32,7 @@ interface Operation {
 export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: StatusBarProps) {
   // Get battery info for the selected device
   const { data: batteryInfo } = useDeviceBatteryInfo(selectedDevice)
-  
+
   // Simulate some operations for demo
   const activeOperations: Operation[] = [
     {
@@ -46,7 +46,7 @@ export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: Status
 
   const getConnectionQuality = () => {
     if (!selectedDevice) return null
-    
+
     if (selectedDevice.transport === 'USB') {
       return { level: 'excellent', strength: 100, icon: Usb, color: 'text-green-500' }
     } else {
@@ -93,18 +93,18 @@ export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: Status
             {operation.type === 'download' && <Download className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />}
             {operation.type === 'upload' && <Upload className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />}
             {operation.type === 'install' && <Activity className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />}
-            
+
             {operation.status === 'running' && (
               <div className="flex items-center gap-1.5 min-w-0">
                 <Progress value={operation.progress} className="w-16 h-1.5" />
                 <span className="text-xs text-muted-foreground">{operation.progress}%</span>
               </div>
             )}
-            
+
             {operation.status === 'completed' && (
               <CheckCircle className="h-3.5 w-3.5 text-green-500" />
             )}
-            
+
             {operation.status === 'error' && (
               <AlertCircle className="h-3.5 w-3.5 text-red-500" />
             )}
@@ -127,12 +127,11 @@ export function StatusBar({ selectedDevice, isLoading, onToggleSidebar }: Status
             {/* Battery Level */}
             {batteryInfo && batteryInfo.level !== undefined && (
               <div className="flex items-center gap-1">
-                <Battery 
-                  className={`h-3.5 w-3.5 ${
-                    batteryInfo.level <= 20 ? 'text-red-500' : 
-                    batteryInfo.level <= 50 ? 'text-yellow-500' : 
-                    'text-green-500'
-                  }`} 
+                <Battery
+                  className={`h-3.5 w-3.5 ${batteryInfo.level <= 20 ? 'text-red-500' :
+                    batteryInfo.level <= 50 ? 'text-yellow-500' :
+                      'text-green-500'
+                    }`}
                 />
                 <span className="text-xs">{batteryInfo.level}%</span>
               </div>
