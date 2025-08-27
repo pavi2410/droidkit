@@ -121,4 +121,7 @@
 
 html, body {
   overscroll-behavior: none;
+
+  user-select: none;
+  -webkit-user-select: none;
 }
