@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { getPairingQrData, pairWirelessDevice, connectWirelessDevice, type DeviceInfo, type PairingData } from "@/tauri-commands"
+import { getPairingQrData, pairWirelessDevice, connectWirelessDevice, startQrPairing, type DeviceInfo, type PairingData, type PairingResult } from "@/tauri-commands"
 import { PairedDevice } from "@/types/paired-device"
 import { usePairedDevices } from "@/hooks/usePairedDevices"
 import { QRCodeSVG } from "qrcode.react"
@@ -33,6 +33,8 @@ export function WirelessConnectionDialog({ onDeviceConnected, children }: Wirele
   // QR pairing state
   const [pairingData, setPairingData] = useState<PairingData | null>(null)
   const [isGeneratingQR, setIsGeneratingQR] = useState(false)
+  const [isPairingViaQr, setIsPairingViaQr] = useState(false)
+  const [pairingStatus, setPairingStatus] = useState<PairingResult | null>(null)
   
   // Device name for saving
   const [deviceName, setDeviceName] = useState("")
@@ -52,6 +54,41 @@ export function WirelessConnectionDialog({ onDeviceConnected, children }: Wirele
       setError(err as string || "Failed to generate QR code")
     } finally {
       setIsGeneratingQR(false)
+    }
+  }
+
+  // Handle QR pairing - start listening for device
+  const handleQrPairing = async () => {
+    if (!pairingData) return
+    
+    setIsPairingViaQr(true)
+    setError("")
+    setPairingStatus(null)
+    
+    try {
+      const result = await startQrPairing(pairingData.pairing_code)
+      setPairingStatus(result)
+      
+      if (result.success) {
+        // Device paired successfully, now connect
+        if (result.device_ip && result.device_port) {
+          const deviceInfo = await connectWirelessDevice(result.device_ip, result.device_port)
+          const name = `${pairingData.ip} (QR)`
+          await addDevice({
+            name,
+            ip: result.device_ip,
+            port: result.device_port,
+            pairingMethod: 'qr-code'
+          })
+          onDeviceConnected(deviceInfo)
+          setOpen(false)
+          resetForm()
+        }
+      }
+    } catch (err) {
+      setError(err as string || "Failed to pair device via QR")
+    } finally {
+      setIsPairingViaQr(false)
     }
   }
 
@@ -135,10 +172,11 @@ export function WirelessConnectionDialog({ onDeviceConnected, children }: Wirele
     setDeviceName("")
     setError("")
     setPairingData(null)
+    setPairingStatus(null)
   }
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isConnecting && !isPairing && !isGeneratingQR) {
+    if (!isConnecting && !isPairing && !isGeneratingQR && !isPairingViaQr) {
       setOpen(newOpen)
       if (!newOpen) {
         resetForm()
@@ -209,20 +247,43 @@ export function WirelessConnectionDialog({ onDeviceConnected, children }: Wirele
                       />
                     </div>
                     <div className="text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Host: {pairingData.ip}:{pairingData.port}
+                      <p className="text-sm font-medium">
+                        Pairing Code: <span className="text-lg font-bold">{pairingData.pairing_code}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Scan QR code with: Settings → Developer Options → Wireless Debugging → Pair with QR code
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Make sure your Android device is on the same Wi-Fi network
                       </p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={generateQRCode}
-                      disabled={isGeneratingQR}
-                    >
-                      Refresh QR Code
-                    </Button>
+                    {pairingStatus && (
+                      <div className={`p-3 rounded-lg ${pairingStatus.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <p className="text-sm">{pairingStatus.message}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleQrPairing}
+                        disabled={isPairingViaQr}
+                      >
+                        {isPairingViaQr ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Waiting for device...
+                          </>
+                        ) : (
+                          "Start Pairing"
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={generateQRCode}
+                        disabled={isGeneratingQR || isPairingViaQr}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center p-8">
@@ -383,7 +444,7 @@ export function WirelessConnectionDialog({ onDeviceConnected, children }: Wirele
           <Button 
             variant="outline" 
             onClick={() => handleOpenChange(false)}
-            disabled={isConnecting || isPairing || isGeneratingQR}
+            disabled={isConnecting || isPairing || isGeneratingQR || isPairingViaQr}
           >
             Close
           </Button>

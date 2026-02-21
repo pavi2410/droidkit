@@ -11,7 +11,7 @@ use crate::adb_commands::files::{FileInfo, list_files, pull_file};
 use crate::adb_commands::logcat::{
     execute_shell_command, get_device_info, get_logcat_output,
 };
-use crate::adb_commands::pairing::{PairingData, generate_pairing_data};
+use crate::adb_commands::pairing::{PairingData, PairingResult, generate_pairing_data, start_pairing_listener};
 use crate::adb_commands::packages::get_installed_packages;
 use crate::emulator::{get_android_home, launch_avd, list_avds};
 use crate::system_info::{
@@ -169,6 +169,17 @@ fn get_pairing_qr_data() -> Result<PairingData, String> {
 }
 
 #[tauri::command]
+fn start_qr_pairing(pairing_code: String) -> Result<PairingResult, String> {
+    let result = start_pairing_listener(pairing_code, 60)?;
+    Ok(PairingResult {
+        success: result.success,
+        message: result.message,
+        device_ip: result.device_ip,
+        device_port: result.device_port,
+    })
+}
+
+#[tauri::command]
 fn discover_devices() -> Result<Vec<String>, String> {
     discover_wireless_devices().map(|devices| {
         devices
@@ -282,6 +293,7 @@ pub fn run() {
             connect_wireless_device,
             pair_wireless_device,
             get_pairing_qr_data,
+            start_qr_pairing,
             discover_devices,
             list_discovered_devices_cmd,
             discover_wireless_devices_detailed_cmd,

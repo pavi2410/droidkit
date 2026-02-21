@@ -28,6 +28,14 @@ export interface PairingData {
   ip: string;
   port: number;
   qr_data: string;
+  pairing_code: string;
+}
+
+export interface PairingResult {
+  success: boolean;
+  message: string;
+  device_ip?: string;
+  device_port?: number;
 }
 
 export interface DiscoveredWirelessDevice {
@@ -150,6 +158,12 @@ export const pairWirelessDevice = (ip: string, port: number, pairingCode: string
  */
 export const getPairingQrData = (): Promise<PairingData> => 
   invoke('get_pairing_qr_data');
+
+/**
+ * Start QR pairing listener and wait for device to connect
+ */
+export const startQrPairing = (pairingCode: string): Promise<PairingResult> => 
+  invoke('start_qr_pairing', { pairingCode });
 
 /**
  * Discover wireless devices on the network
