@@ -74,7 +74,7 @@ pub(crate) fn start_pairing_listener(
                 let ipv4_addresses: Vec<Ipv4Addr> = service
                     .get_addresses_v4()
                     .iter()
-                    .map(|addr| **addr)
+                    .map(|addr| *addr)
                     .collect();
 
                 if let Some(ip) = ipv4_addresses.first() {
