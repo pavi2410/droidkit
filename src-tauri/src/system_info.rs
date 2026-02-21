@@ -1,4 +1,4 @@
-use crate::adb_commands::Device;
+use crate::adb_commands::device::Device;
 use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 
