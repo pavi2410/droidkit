@@ -78,9 +78,9 @@ pub struct NetworkInterface {
     pub status: Option<String>,
 }
 
-fn execute_adb_command(device: &mut Device, command: &[&str]) -> Option<String> {
+fn execute_adb_command(device: &mut Device, command: &str) -> Option<String> {
     let mut buf: Vec<u8> = Vec::new();
-    match device.shell_command(command, &mut buf) {
+    match device.shell_command(&command, &mut buf) {
         Ok(_) => match from_utf8(&buf) {
             Ok(output) => Some(output.trim().to_string()),
             Err(_) => None,
@@ -90,7 +90,7 @@ fn execute_adb_command(device: &mut Device, command: &[&str]) -> Option<String> 
 }
 
 fn get_property(device: &mut Device, property: &str) -> Option<String> {
-    execute_adb_command(device, &["getprop", property])
+    execute_adb_command(device, &format!("getprop {}", property))
 }
 
 pub fn get_hardware_info(device: &mut Device) -> HardwareInfo {
@@ -109,7 +109,7 @@ pub fn get_hardware_info(device: &mut Device) -> HardwareInfo {
 }
 
 fn parse_memory_info(device: &mut Device, field: &str) -> Option<String> {
-    if let Some(meminfo) = execute_adb_command(device, &["cat", "/proc/meminfo"]) {
+    if let Some(meminfo) = execute_adb_command(device, "cat /proc/meminfo") {
         for line in meminfo.lines() {
             if line.starts_with(field) {
                 if let Some(value) = line.split_whitespace().nth(1) {
@@ -131,7 +131,7 @@ fn parse_memory_info(device: &mut Device, field: &str) -> Option<String> {
 }
 
 fn get_storage_info(device: &mut Device, path: &str, info_type: &str) -> Option<String> {
-    if let Some(df_output) = execute_adb_command(device, &["df", "-h", path]) {
+    if let Some(df_output) = execute_adb_command(device, &format!("df -h {}", path)) {
         for line in df_output.lines() {
             if line.contains(path) || line.starts_with("/dev/") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -159,7 +159,7 @@ pub fn get_display_info(device: &mut Device) -> DisplayInfo {
 }
 
 fn get_screen_resolution(device: &mut Device) -> Option<String> {
-    if let Some(output) = execute_adb_command(device, &["wm", "size"]) {
+    if let Some(output) = execute_adb_command(device, "wm size") {
         for line in output.lines() {
             if line.contains("Physical size:") {
                 if let Some(size) = line.split("Physical size:").nth(1) {
@@ -172,7 +172,7 @@ fn get_screen_resolution(device: &mut Device) -> Option<String> {
 }
 
 fn get_screen_density(device: &mut Device) -> Option<String> {
-    if let Some(output) = execute_adb_command(device, &["wm", "density"]) {
+    if let Some(output) = execute_adb_command(device, "wm density") {
         for line in output.lines() {
             if line.contains("Physical density:") {
                 if let Some(density) = line.split("Physical density:").nth(1) {
@@ -189,7 +189,7 @@ fn get_physical_size(device: &mut Device) -> Option<String> {
 }
 
 fn get_refresh_rate(device: &mut Device) -> Option<String> {
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "display"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys display") {
         for line in output.lines() {
             if line.contains("refreshRate=") {
                 if let Some(rate_part) = line.split("refreshRate=").nth(1) {
@@ -204,7 +204,7 @@ fn get_refresh_rate(device: &mut Device) -> Option<String> {
 }
 
 fn get_orientation(device: &mut Device) -> Option<String> {
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "input"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys input") {
         for line in output.lines() {
             if line.contains("SurfaceOrientation:") {
                 if let Some(orientation) = line.split("SurfaceOrientation:").nth(1) {
@@ -223,7 +223,7 @@ fn get_orientation(device: &mut Device) -> Option<String> {
 }
 
 pub fn get_battery_info(device: &mut Device) -> Option<BatteryInfo> {
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "battery"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys battery") {
         let mut battery_info = BatteryInfo {
             level: None,
             status: None,
@@ -305,7 +305,7 @@ pub fn get_network_info(device: &mut Device) -> NetworkInfo {
 }
 
 fn get_wifi_status(device: &mut Device) -> Option<String> {
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "wifi"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys wifi") {
         for line in output.lines() {
             if line.contains("Wi-Fi is ") {
                 if line.contains("enabled") {
@@ -321,14 +321,14 @@ fn get_wifi_status(device: &mut Device) -> Option<String> {
 
 fn get_connection_type(device: &mut Device) -> Option<String> {
     // Check for WiFi connection first
-    if let Some(wifi_info) = execute_adb_command(device, &["dumpsys", "wifi"]) {
+    if let Some(wifi_info) = execute_adb_command(device, "dumpsys wifi") {
         if wifi_info.contains("mWifiInfo") && wifi_info.contains("state: COMPLETED") {
             return Some("WiFi".to_string());
         }
     }
 
     // Check for mobile data connection
-    if let Some(telephony) = execute_adb_command(device, &["dumpsys", "telephony.registry"]) {
+    if let Some(telephony) = execute_adb_command(device, "dumpsys telephony.registry") {
         if telephony.contains("mDataConnectionState=2") || telephony.contains("CONNECTED") {
             // Try to determine mobile data type
             if let Some(network_type) = get_property(device, "gsm.network.type") {
@@ -361,7 +361,7 @@ fn get_connection_type(device: &mut Device) -> Option<String> {
 }
 
 fn get_signal_strength(device: &mut Device) -> Option<i32> {
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "telephony.registry"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys telephony.registry") {
         for line in output.lines() {
             if line.contains("mSignalStrength") {
                 // Parse signal strength - this is a simplified approach
@@ -385,7 +385,7 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
     }
 
     // Try WiFi signal strength as fallback
-    if let Some(output) = execute_adb_command(device, &["dumpsys", "wifi"]) {
+    if let Some(output) = execute_adb_command(device, "dumpsys wifi") {
         for line in output.lines() {
             if line.contains("rssi: ") {
                 if let Some(rssi_part) = line.split("rssi: ").nth(1) {
@@ -412,7 +412,7 @@ fn get_signal_strength(device: &mut Device) -> Option<i32> {
 
 fn get_network_speed(device: &mut Device, speed_type: &str) -> Option<String> {
     // Simple connectivity test using ping
-    if let Some(ping_output) = execute_adb_command(device, &["ping", "-c", "3", "8.8.8.8"]) {
+    if let Some(ping_output) = execute_adb_command(device, "ping -c 3 8.8.8.8") {
         // Parse ping results for basic connectivity info
         for line in ping_output.lines() {
             if line.contains("avg") {
@@ -438,7 +438,7 @@ fn get_network_speed(device: &mut Device, speed_type: &str) -> Option<String> {
     // Try to get speed info from system properties or network stats
     if speed_type == "download" {
         // Check for download speed indicators
-        if let Some(_stats) = execute_adb_command(device, &["cat", "/proc/net/dev"]) {
+        if let Some(_stats) = execute_adb_command(device, "cat /proc/net/dev") {
             // This is a placeholder - actual implementation would parse network statistics
             return Some("Estimating...".to_string());
         }
@@ -448,7 +448,7 @@ fn get_network_speed(device: &mut Device, speed_type: &str) -> Option<String> {
 }
 
 fn get_network_interfaces(device: &mut Device) -> Option<Vec<NetworkInterface>> {
-    if let Some(output) = execute_adb_command(device, &["ip", "addr", "show"]) {
+    if let Some(output) = execute_adb_command(device, "ip addr show") {
         let mut interfaces = Vec::new();
         let mut current_interface: Option<NetworkInterface> = None;
 

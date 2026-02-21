@@ -1,6 +1,7 @@
 use crate::utils::get_local_ip_address;
 use adb_client::{
-    ADBDeviceExt, ADBServer, ADBTcpDevice, ADBUSBDevice, MDNSDiscoveryService, RustADBError,
+    mdns::MDNSDiscoveryService, server::ADBServer, tcp::ADBTcpDevice, usb::ADBUSBDevice,
+    ADBDeviceExt, RustADBError,
 };
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr, SocketAddrV4};
@@ -32,12 +33,12 @@ pub(crate) enum Device {
 impl Device {
     pub fn shell_command(
         &mut self,
-        cmd: &[&str],
+        cmd: &dyn AsRef<str>,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), RustADBError> {
+    ) -> Result<Option<u8>, RustADBError> {
         match self {
-            Device::USB(device) => device.shell_command(cmd, output),
-            Device::TCP(device) => device.shell_command(cmd, output),
+            Device::USB(device) => device.shell_command(cmd, Some(output), None),
+            Device::TCP(device) => device.shell_command(cmd, Some(output), None),
         }
     }
 }
@@ -296,7 +297,7 @@ pub(crate) fn discover_wireless_devices() -> Result<Vec<DiscoveredWirelessDevice
 
             // Filter out IPv6 addresses and only include IPv4 addresses
             let ipv4_addresses: Vec<String> = device
-                .addresses
+                .addresses()
                 .iter()
                 .filter_map(|addr| {
                     // Filter for IPv4 addresses only
@@ -428,7 +429,7 @@ pub(crate) struct FileInfo {
 pub(crate) fn list_files(device: &mut Device, path: &str) -> Result<Vec<FileInfo>, String> {
     let mut buf: Vec<u8> = Vec::new();
 
-    let result = device.shell_command(&["ls", "-la", path], &mut buf);
+    let result = device.shell_command(&format!("ls -la {}", path), &mut buf);
 
     match result {
         Ok(_) => {
@@ -522,7 +523,7 @@ pub(crate) fn pull_file(
     // In a real app, you'd want to use proper file transfer methods
     let mut buf: Vec<u8> = Vec::new();
 
-    let result = device.shell_command(&["cat", remote_path], &mut buf);
+    let result = device.shell_command(&format!("cat {}", remote_path), &mut buf);
 
     match result {
         Ok(_) => {
@@ -536,7 +537,7 @@ pub(crate) fn pull_file(
 pub(crate) fn get_installed_packages(device: &mut Device) -> Result<Vec<String>, String> {
     let mut buf: Vec<u8> = Vec::new();
 
-    let result = device.shell_command(&["pm", "list", "packages"], &mut buf);
+    let result = device.shell_command(&"pm list packages", &mut buf);
 
     match result {
         Ok(_) => {
@@ -574,7 +575,7 @@ pub(crate) fn get_logcat_output(
         args.push(filter_arg.as_str());
     }
 
-    let shell_result = device.shell_command(&args, &mut buf);
+    let shell_result = device.shell_command(&args.join(" ").as_str(), &mut buf);
 
     match shell_result {
         Ok(_) => {
@@ -588,7 +589,7 @@ pub(crate) fn get_logcat_output(
 fn getprop_from_device(device: &mut Device, property: &str) -> Option<String> {
     let mut buf: Vec<u8> = Vec::new();
 
-    match device.shell_command(&["getprop", property], &mut buf) {
+    match device.shell_command(&format!("getprop {}", property), &mut buf) {
         Ok(..) => match from_utf8(buf.as_slice()) {
             Ok(data) => Some(data.trim().to_string()),
             Err(..) => None,
@@ -622,7 +623,7 @@ pub(crate) fn execute_shell_command(device: &mut Device, command: &str) -> Resul
         return Err("Empty command".to_string());
     }
 
-    let result = device.shell_command(&command_parts, &mut buf);
+    let result = device.shell_command(&command, &mut buf);
 
     match result {
         Ok(_) => {
