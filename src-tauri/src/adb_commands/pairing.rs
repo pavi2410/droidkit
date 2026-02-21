@@ -1,8 +1,8 @@
 use crate::utils::get_local_ip_address;
+use adb_client::server::ADBServer;
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::Serialize;
-use std::net::Ipv4Addr;
-use std::process::Command;
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 #[derive(Serialize)]
 pub(crate) struct PairingData {
@@ -83,38 +83,32 @@ pub(crate) fn start_pairing_listener(
 
                     println!("Attempting to pair with {}:{}", ip_str, port);
 
-                    let output = Command::new("adb")
-                        .args(["pair", &format!("{}:{}", ip_str, port), &pairing_code])
-                        .output();
+                    let socket_addr = SocketAddrV4::new(*ip, port);
+                    let mut adb_server = ADBServer::default();
 
-                    match output {
-                        Ok(result) => {
-                            let stdout = String::from_utf8_lossy(&result.stdout);
-                            let stderr = String::from_utf8_lossy(&result.stderr);
+                    let result = adb_server.pair(socket_addr, pairing_code.clone());
 
-                            println!("adb pair stdout: {}", stdout);
-                            println!("adb pair stderr: {}", stderr);
+                    let _ = mdns.shutdown();
 
-                            let _ = mdns.shutdown();
-
-                            if result.status.success() && stdout.contains("Successfully paired") {
-                                return Ok(PairingResult {
-                                    success: true,
-                                    message: "Device paired successfully".to_string(),
-                                    device_ip: Some(ip_str),
-                                    device_port: Some(port),
-                                });
-                            } else {
-                                return Ok(PairingResult {
-                                    success: false,
-                                    message: format!("Pairing failed: {}", stderr),
-                                    device_ip: None,
-                                    device_port: None,
-                                });
-                            }
+                    match result {
+                        Ok(_) => {
+                            println!("Pairing successful with {}:{}", ip_str, port);
+                            return Ok(PairingResult {
+                                success: true,
+                                message: "Device paired successfully".to_string(),
+                                device_ip: Some(ip_str),
+                                device_port: Some(port),
+                            });
                         }
                         Err(e) => {
-                            println!("Failed to run adb pair: {}", e);
+                            let error_str = format!("{:?}", e);
+                            println!("Pairing failed: {}", error_str);
+                            return Ok(PairingResult {
+                                success: false,
+                                message: format!("Pairing failed: {}", error_str),
+                                device_ip: None,
+                                device_port: None,
+                            });
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 use adb_client::{
-    server::ADBServer, tcp::ADBTcpDevice, usb::ADBUSBDevice, ADBDeviceExt, RustADBError,
+    ADBDeviceExt, RustADBError, server::ADBServer, tcp::ADBTcpDevice, usb::ADBUSBDevice,
 };
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr, SocketAddrV4};

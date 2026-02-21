@@ -1,18 +1,17 @@
 use crate::adb_commands::device::{
-    DeviceInfo, DiscoveredDevice,
-    connect_tcp_device, connect_to_discovered_device, get_connected_device,
-    list_discovered_devices, pair_device_with_code, reconnect_device,
+    DeviceInfo, DiscoveredDevice, connect_tcp_device, connect_to_discovered_device,
+    get_connected_device, list_discovered_devices, pair_device_with_code, reconnect_device,
 };
 use crate::adb_commands::discovery::{
     DiscoveredWirelessDevice, discover_wireless_devices, discover_wireless_devices_detailed,
     get_connection_port_for_device,
 };
 use crate::adb_commands::files::{FileInfo, list_files, pull_file};
-use crate::adb_commands::logcat::{
-    execute_shell_command, get_device_info, get_logcat_output,
-};
-use crate::adb_commands::pairing::{PairingData, PairingResult, generate_pairing_data, start_pairing_listener};
+use crate::adb_commands::logcat::{execute_shell_command, get_device_info, get_logcat_output};
 use crate::adb_commands::packages::get_installed_packages;
+use crate::adb_commands::pairing::{
+    PairingData, PairingResult, generate_pairing_data, start_pairing_listener,
+};
 use crate::emulator::{get_android_home, launch_avd, list_avds};
 use crate::system_info::{
     BatteryInfo, BuildInfo, DisplayInfo, HardwareInfo, NetworkInfo, get_battery_info,
